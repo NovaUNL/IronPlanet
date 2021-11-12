@@ -1,0 +1,11 @@
+pub type CourseKey = u32;
+pub type DepartmentKey = u32;
+pub type BuildingKey = u32;
+pub type RoomKey = u32;
+pub type TeacherKey = u32;
+pub type StudentKey = u32;
+pub type ClassKey = u32;
+pub type ClassInstanceKey = u32;
+pub type ShiftKey = u32;
+pub type EnrollmentKey = u32;
+pub type FileKey = u32;
