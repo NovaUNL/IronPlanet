@@ -189,7 +189,7 @@ pub(crate) enum RoomType {
 pub(crate) struct Department {
     pub(crate) id: u32,
     pub(crate) name: String,
-    pub(crate) description: String,
+    pub(crate) description: Option<String>,
     pub(crate) courses: Vec<CourseKey>,
     pub(crate) building: Option<BuildingKey>,
 }
@@ -274,17 +274,16 @@ pub(crate) struct Class {
     pub(crate) instances: Vec<ClassInstanceKey>,
 }
 
-#[derive(Deserialize, Debug, PartialEq)]
+#[derive(Deserialize, Debug, PartialEq, Clone)]
 #[serde(rename_all = "snake_case")]
 pub(crate) struct ClassInstance {
     pub(crate) id: ClassInstanceKey,
     pub(crate) year: u32,
+    pub(crate) parent: ClassKey,
     pub(crate) department: Option<DepartmentKey>,
     pub(crate) period: Period,
-    pub(crate) students: Vec<StudentKey>,
-    pub(crate) teachers: Vec<TeacherKey>,
-    pub(crate) shifts: Vec<ShiftKey>,
-    // pub(crate) information: HashMap<String, ClassInfo>,
+    pub(crate) enrollments: Vec<Enrollment>,
+    pub(crate) shifts: Vec<ClassShift>,
     pub(crate) information: ClassInfoSources,
     pub(crate) avg_grade: Option<f32>,
 }
@@ -292,7 +291,7 @@ pub(crate) struct ClassInstance {
 #[derive(Deserialize, Debug, PartialEq, Clone)]
 #[serde(rename_all = "snake_case")]
 pub struct ClassInfoSources {
-    pub upstream: ClassInfo,
+    pub upstream: Option<ClassInfo>,
 }
 
 #[derive(Deserialize, Debug, PartialEq, Clone)]
@@ -319,7 +318,7 @@ pub struct ClassInfoEntry {
     pub editor: Option<String>,
 }
 
-#[derive(Deserialize, Debug, PartialEq)]
+#[derive(Deserialize, Debug, PartialEq, Clone)]
 #[serde(rename_all = "snake_case")]
 pub(crate) struct ClassShift {
     pub(crate) id: ShiftKey,
@@ -330,7 +329,7 @@ pub(crate) struct ClassShift {
     pub(crate) instances: Vec<ClassShiftInstance>,
 }
 
-#[derive(Deserialize, Debug, PartialEq)]
+#[derive(Deserialize, Debug, PartialEq, Clone)]
 #[serde(rename_all = "snake_case")]
 pub(crate) struct ClassShiftInstance {
     pub(crate) weekday: Weekday,
@@ -339,7 +338,7 @@ pub(crate) struct ClassShiftInstance {
     pub(crate) room: Option<RoomKey>,
 }
 
-#[derive(Deserialize, Debug, PartialEq)]
+#[derive(Deserialize, Debug, PartialEq, Clone)]
 #[serde(rename_all = "snake_case")]
 pub(crate) struct ClassInstanceFiles {
     pub(crate) official: Vec<ClassInstanceFile>,
@@ -347,7 +346,7 @@ pub(crate) struct ClassInstanceFiles {
     // pub(crate) denied: Vec<ClassInstanceFile>,
 }
 
-#[derive(Deserialize, Debug, PartialEq)]
+#[derive(Deserialize, Debug, PartialEq, Clone)]
 #[serde(rename_all = "snake_case")]
 pub(crate) struct ClassInstanceFile {
     pub(crate) id: u32,
@@ -360,7 +359,7 @@ pub(crate) struct ClassInstanceFile {
     pub(crate) url: String,
 }
 
-#[derive(Deserialize, Debug, PartialEq)]
+#[derive(Deserialize, Debug, PartialEq, Clone)]
 #[serde(rename_all = "snake_case")]
 pub(crate) struct File {
     pub(crate) hash: String,
@@ -370,7 +369,7 @@ pub(crate) struct File {
     pub(crate) url: String,
 }
 
-#[derive(Deserialize, Debug, PartialEq)]
+#[derive(Deserialize, Debug, PartialEq, Clone)]
 #[serde(rename_all = "snake_case")]
 pub(crate) struct Student {
     pub(crate) id: StudentKey,
@@ -386,7 +385,7 @@ pub(crate) struct Student {
     pub(crate) url: String,
 }
 
-#[derive(Deserialize, Debug, PartialEq)]
+#[derive(Deserialize, Debug, PartialEq, Clone)]
 #[serde(rename_all = "snake_case")]
 pub(crate) struct Teacher {
     pub(crate) id: TeacherKey,
@@ -404,13 +403,13 @@ pub(crate) struct Teacher {
     pub(crate) url: String,
 }
 
-#[derive(Deserialize, Debug, PartialEq)]
+#[derive(Deserialize, Debug, PartialEq, Clone)]
 #[serde(rename_all = "snake_case")]
 pub(crate) struct Enrollment {
     pub(crate) id: EnrollmentKey,
     pub(crate) class_instance: ClassInstanceKey,
     pub(crate) student: StudentKey,
-    pub(crate) attendance: bool,
+    pub(crate) attendance: Option<bool>,
     pub(crate) attendance_date: Option<String>,
     pub(crate) normal_grade: Option<u8>,
     pub(crate) normal_grade_date: Option<String>,
@@ -420,6 +419,6 @@ pub(crate) struct Enrollment {
     pub(crate) special_grade_date: Option<String>,
     pub(crate) improvement_grade: Option<u8>,
     pub(crate) improvement_grade_date: Option<String>,
-    pub(crate) approved: bool,
+    pub(crate) approved: Option<bool>,
     pub(crate) grade: Option<u8>,
 }

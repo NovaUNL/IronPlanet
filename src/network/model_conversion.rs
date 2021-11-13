@@ -128,22 +128,17 @@ impl nmodels::ClassInstance {
             id: self.id,
             year: self.year,
             period: models::Period::from(self.period),
-            students: self
-                .students
+            enrollments: self
+                .enrollments
                 .iter()
-                .map(|key| ObjRef::<models::Student, StudentKey>::new(*key, client.clone()))
-                .collect(),
-            teachers: self
-                .teachers
-                .iter()
-                .map(|key| ObjRef::<models::Teacher, TeacherKey>::new(*key, client.clone()))
+                .map(|enrollment| ObjRef::<models::Enrollment, EnrollmentKey>::new(enrollment.id, client.clone()))
                 .collect(),
             information: self.information.upstream.clone(),
             avg_grade: self.avg_grade.clone(),
             shifts: self
                 .shifts
                 .iter()
-                .map(|key| ObjRef::<models::ClassShift, ShiftKey>::new(*key, client.clone()))
+                .map(|shift| ObjRef::<models::ClassShift, ShiftKey>::new(shift.id, client.clone()))
                 .collect(),
             department: if let Some(key) = self.department {
                 Some(ObjRef::<models::Department, DepartmentKey>::new(
@@ -222,7 +217,7 @@ impl nmodels::Enrollment {
                 client.clone(),
             ),
             student: ObjRef::<models::Student, StudentKey>::new(self.student, client),
-            attendance: self.attendance,
+            attendance: self.attendance.clone(),
             attendance_date: self.attendance_date.clone(),
             normal_grade: self.normal_grade.clone(),
             normal_grade_date: self.normal_grade_date.clone(),
@@ -232,7 +227,7 @@ impl nmodels::Enrollment {
             special_grade_date: self.special_grade_date.clone(),
             improvement_grade: self.improvement_grade,
             improvement_grade_date: self.improvement_grade_date.clone(),
-            approved: self.approved,
+            approved: self.approved.clone(),
             grade: self.grade.clone(),
         }
     }

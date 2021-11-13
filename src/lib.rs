@@ -309,8 +309,14 @@ impl Supernova {
             .authenticated
             .fetch_class_instance(&self.http_client, id)?;
         let mut cache = self.cache.write().unwrap();
+        nclass_inst.enrollments.iter().for_each(|nenrollment| {
+            cache.enrollments.insert(nenrollment.id, nenrollment.clone());
+        });
+        nclass_inst.shifts.iter().for_each(|nshift| {
+            cache.class_shifts.insert(nshift.id, nshift.clone());
+        });
         let class_inst = nclass_inst.link(self.clone());
-        cache.class_instances.insert(nclass_inst.id, nclass_inst);
+
         Ok(class_inst)
     }
 

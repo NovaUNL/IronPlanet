@@ -231,7 +231,10 @@ impl AuthenticatedSupernova {
         };
 
         let json_str = http.send(request)?;
-        Ok(serde_json::from_str(&json_str).map_err(|_| Error::ParsingError)?)
+        Ok(serde_json::from_str(&json_str).map_err(|e| {
+            dbg!(e);
+            Error::ParsingError
+        })?)
     }
 
     pub(crate) fn logout(&self, http: &HTTPClient) -> Result<nmodels::TokenResult, Error> {

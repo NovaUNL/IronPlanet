@@ -122,7 +122,7 @@ pub enum RoomType {
 pub struct Department {
     pub id: u32,
     pub name: String,
-    pub description: String,
+    pub description: Option<String>,
     pub(crate) courses: Vec<ObjRef<Course, CourseKey>>,
     pub(crate) building: Option<ObjRef<Building, BuildingKey>>,
 }
@@ -186,9 +186,8 @@ pub struct ClassInstance {
     pub id: u32,
     pub year: u32,
     pub period: Period,
-    pub(crate) students: Vec<ObjRef<Student, StudentKey>>,
-    pub(crate) teachers: Vec<ObjRef<Teacher, TeacherKey>>,
-    pub information: ClassInfo,
+    pub(crate) enrollments: Vec<ObjRef<Enrollment, EnrollmentKey>>,
+    pub information: Option<ClassInfo>,
     pub avg_grade: Option<f32>,
     pub(crate) shifts: Vec<ObjRef<ClassShift, ShiftKey>>,
     pub(crate) department: Option<ObjRef<Department, DepartmentKey>>,
@@ -296,7 +295,7 @@ pub struct Enrollment {
     pub id: EnrollmentKey,
     pub(crate) class_instance: ObjRef<ClassInstance, ClassInstanceKey>,
     pub(crate) student: ObjRef<Student, StudentKey>,
-    pub attendance: bool,
+    pub attendance: Option<bool>,
     pub attendance_date: Option<String>,
     pub normal_grade: Option<u8>,
     pub normal_grade_date: Option<String>,
@@ -306,7 +305,7 @@ pub struct Enrollment {
     pub special_grade_date: Option<String>,
     pub improvement_grade: Option<u8>,
     pub improvement_grade_date: Option<String>,
-    pub approved: bool,
+    pub approved: Option<bool>,
     pub grade: Option<u8>,
 }
 
@@ -395,18 +394,10 @@ impl ClassInstance {
         })
     }
 
-    pub fn get_students(&self) -> Result<Vec<Student>, Error> {
+    pub fn get_enrollments(&self) -> Result<Vec<Enrollment>, Error> {
         let mut result = vec![];
-        for student_ref in self.students.iter() {
+        for student_ref in self.enrollments.iter() {
             result.push(student_ref.coerce()?)
-        }
-        Ok(result)
-    }
-
-    pub fn get_teachers(&self) -> Result<Vec<Teacher>, Error> {
-        let mut result = vec![];
-        for teacher_ref in self.teachers.iter() {
-            result.push(teacher_ref.coerce()?)
         }
         Ok(result)
     }
