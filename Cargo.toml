@@ -1,7 +1,12 @@
 [package]
 name = "iron_planet"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
+description = "Supernova platform client"
+license = "AGPL-3.0"
+homepage = "https://supernova.nunl.pt"
+repository = "https://github.com/claudioap/IronPlanet"
+keywords = ["Supernova", "service", "API", "client"]
 
 
 [dependencies]
