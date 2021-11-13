@@ -4,11 +4,11 @@ use crate::models;
 use crate::models::ShiftType;
 use crate::network::models as nmodels;
 use crate::network::models::RoomType;
-use crate::{NetworkClient, ShiftKey};
+use crate::{Supernova, ShiftKey};
 use std::sync::Arc;
 
 impl nmodels::Building {
-    pub(crate) fn link(&self, client: Arc<NetworkClient>) -> models::Building {
+    pub(crate) fn link(&self, client: Arc<Supernova>) -> models::Building {
         models::Building {
             id: self.id,
             name: self.name.clone(),
@@ -23,7 +23,7 @@ impl nmodels::Building {
 }
 
 impl nmodels::Place {
-    pub(crate) fn link(&self, client: Arc<NetworkClient>) -> models::Place {
+    pub(crate) fn link(&self, client: Arc<Supernova>) -> models::Place {
         models::Place {
             id: self.id,
             name: self.name.clone(),
@@ -61,7 +61,7 @@ impl nmodels::Place {
 }
 
 impl nmodels::Department {
-    pub(crate) fn link(&self, client: Arc<NetworkClient>) -> models::Department {
+    pub(crate) fn link(&self, client: Arc<Supernova>) -> models::Department {
         models::Department {
             id: self.id,
             name: self.name.clone(),
@@ -81,7 +81,7 @@ impl nmodels::Department {
 }
 
 impl nmodels::Course {
-    pub(crate) fn link(&self, client: Arc<NetworkClient>) -> models::Course {
+    pub(crate) fn link(&self, client: Arc<Supernova>) -> models::Course {
         models::Course {
             id: self.id,
             abbreviation: self.abbreviation.clone(),
@@ -97,7 +97,7 @@ impl nmodels::Course {
 }
 
 impl nmodels::Class {
-    pub(crate) fn link(&self, client: Arc<NetworkClient>) -> models::Class {
+    pub(crate) fn link(&self, client: Arc<Supernova>) -> models::Class {
         models::Class {
             id: self.id,
             name: self.name.clone(),
@@ -123,7 +123,7 @@ impl nmodels::Class {
 }
 
 impl nmodels::ClassInstance {
-    pub(crate) fn link(&self, client: Arc<NetworkClient>) -> models::ClassInstance {
+    pub(crate) fn link(&self, client: Arc<Supernova>) -> models::ClassInstance {
         models::ClassInstance {
             id: self.id,
             year: self.year,
@@ -157,7 +157,7 @@ impl nmodels::ClassInstance {
 }
 
 impl nmodels::Student {
-    pub(crate) fn link(&self, client: Arc<NetworkClient>) -> models::Student {
+    pub(crate) fn link(&self, client: Arc<Supernova>) -> models::Student {
         models::Student {
             id: self.id,
             name: self.name.clone(),
@@ -187,7 +187,7 @@ impl nmodels::Student {
 }
 
 impl nmodels::Teacher {
-    pub(crate) fn link(&self, client: Arc<NetworkClient>) -> models::Teacher {
+    pub(crate) fn link(&self, client: Arc<Supernova>) -> models::Teacher {
         models::Teacher {
             id: self.id,
             name: self.name.clone(),
@@ -214,7 +214,7 @@ impl nmodels::Teacher {
 }
 
 impl nmodels::Enrollment {
-    pub(crate) fn link(&self, client: Arc<NetworkClient>) -> models::Enrollment {
+    pub(crate) fn link(&self, client: Arc<Supernova>) -> models::Enrollment {
         models::Enrollment {
             id: self.id,
             class_instance: ObjRef::<models::ClassInstance, ClassInstanceKey>::new(
@@ -239,7 +239,7 @@ impl nmodels::Enrollment {
 }
 
 impl nmodels::ClassShift {
-    pub(crate) fn link(&self, client: Arc<NetworkClient>) -> models::ClassShift {
+    pub(crate) fn link(&self, client: Arc<Supernova>) -> models::ClassShift {
         models::ClassShift {
             id: self.id,
             number: self.number,
@@ -346,7 +346,7 @@ impl From<nmodels::ShiftType> for models::ShiftType {
 // }
 
 impl nmodels::ClassShiftInstance {
-    fn to_model(&self, client: Arc<NetworkClient>) -> models::ClassShiftInstance {
+    fn to_model(&self, client: Arc<Supernova>) -> models::ClassShiftInstance {
         models::ClassShiftInstance {
             weekday: models::Weekday::from(self.weekday),
             start: self.start,

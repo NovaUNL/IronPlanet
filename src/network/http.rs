@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use ureq::{ErrorKind, SerdeValue};
 
 #[derive(Default)]
-pub struct HTTPClient;
+pub(crate) struct HTTPClient;
 
 impl HTTPClient {
     pub(crate) fn send(&self, req: Request) -> Result<String, Error> {
@@ -37,7 +37,7 @@ impl HTTPClient {
         let code = response.status();
 
         match code {
-            100..=399 => Ok(response.into_string().map_err(|_| Error::ParsingError)?),
+            100..=399 => Ok(response.into_string().map_err(|_| Error::DecodeError)?),
             400..=499 => Err(Error::ResourceMissingError),
             500..=699 => Err(Error::ServerError),
             _ => Err(Error::NamelessError),

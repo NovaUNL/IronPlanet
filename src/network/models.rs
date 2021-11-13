@@ -4,18 +4,18 @@ use serde::{Deserialize, Serialize};
 use serde_repr::Deserialize_repr;
 
 #[derive(Serialize)]
-pub(crate) struct BasicAuthCredentials {
-    username: String,
-    password: String,
+pub(crate) struct BasicAuthCredentials<'a> {
+    username: &'a str,
+    password: &'a str,
     machine_uuid: Option<String>,
 }
 
-impl BasicAuthCredentials {
+impl<'a> BasicAuthCredentials<'_> {
     pub(crate) fn new(
-        username: String,
-        password: String,
+        username: &'a str,
+        password: &'a str,
         machine_uuid: Option<String>,
-    ) -> BasicAuthCredentials {
+    ) -> BasicAuthCredentials<'a> {
         BasicAuthCredentials {
             username,
             password,
