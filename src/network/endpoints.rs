@@ -120,9 +120,12 @@ impl BaseSupernova {
             .add_header("Authorization".to_string(), format!("Token {}", token))
             .set_body(serde_json::json!(nmodels::TokenCredentials::new(token)))
             .build();
-        let json_str = http.send(request)?;
-
-        Ok(serde_json::from_str(&json_str).map_err(|_| Error::ParsingError)?)
+        http.send(request)?;
+        // let json_str = http.send(request)?;
+        // if json_str == "Success" {
+        //     ???
+        // }
+        Ok(())
     }
 
     pub(crate) fn fetch_departments(
@@ -206,6 +209,14 @@ impl AuthenticatedSupernova {
             .swap(&RefCell::new(Some(token)));
     }
 
+    pub(crate) fn clear_token(&self) {
+        self.credentials
+            .lock()
+            .unwrap()
+            .borrow_mut()
+            .swap(&RefCell::new(None));
+    }
+
     fn generic_fetch<T: DeserializeOwned>(&self, http: &HTTPClient, url: &str) -> Result<T, Error> {
         let request = if let Some(credentials) = self.credentials.lock().unwrap().borrow().as_ref()
         {
@@ -223,10 +234,7 @@ impl AuthenticatedSupernova {
         Ok(serde_json::from_str(&json_str).map_err(|_| Error::ParsingError)?)
     }
 
-    pub(crate) fn logout(
-        &self,
-        http: &HTTPClient,
-    ) -> Result<nmodels::TokenResult, Error> {
+    pub(crate) fn logout(&self, http: &HTTPClient) -> Result<nmodels::TokenResult, Error> {
         let request = if let Some(credentials) = self.credentials.lock().unwrap().borrow().as_ref()
         {
             RequestBuilder::new(&Endpoint::Logout.to_string())

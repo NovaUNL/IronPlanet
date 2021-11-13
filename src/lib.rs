@@ -35,7 +35,13 @@ impl Supernova {
         Ok(token.token)
     }
 
-    pub fn verify_login(&self, token: AuthToken) -> Result<(), Error> {
+    pub fn logout(&self) -> Result<(), Error> {
+        self.authenticated.logout(&self.http_client)?;
+        self.authenticated.clear_token();
+        Ok(())
+    }
+
+    pub fn set_auth_token(&self, token: AuthToken) -> Result<(), Error> {
         self.base.verify(&self.http_client, token.clone())?;
         self.authenticated.set_token(token);
         Ok(())

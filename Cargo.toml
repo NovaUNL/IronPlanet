@@ -11,4 +11,6 @@ serde_repr = "0.1.7"
 
 ureq = { version = "2.3.0", features = ["json"] }
 
+lazy_static = "1.4.0"
+
 sysinfo = "0.21.1"
