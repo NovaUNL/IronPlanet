@@ -14,6 +14,8 @@ impl HTTPClient {
             Method::DELETE => ureq::delete(&req.url),
         };
 
+        request = request.set("iron_planet", env!("CARGO_PKG_VERSION"));
+
         for (k, v) in req.headers.iter() {
             request = request.set(k, v);
         }
