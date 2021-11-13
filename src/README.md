@@ -5,22 +5,23 @@ A client library for the [Supernova](https://gitlab.com/claudiop/Supernova/) RES
 ## Usage
 
 ```rust
-use iron_planet::Supernova;
+use iron_planet::{Supernova, RequestConfig};
 
 fn main() {
     // Instantiate an unprivileged client
     let sn = Supernova::new();
+    let conf = RequestConfig::default();
     // One can use it to query endpoints that require no auth
-    let result = sn.get_buildings(); // Will succeed, hopefully
+    let result = sn.get_buildings(&conf); // Will succeed, hopefully
     // But not to query endpoints that require user auth
-    let result = sn.get_class_inst(123); // Will fail, hopefully
+    let result = sn.get_class_inst(123, &conf); // Will fail, hopefully
     // It is possible to enable authentication in two different ways
     // One can provide authentication credentials in the form of a user-pass
     // A successful login will return a result with the session token
     let token = sn.login("user", "pass").unwrap();
     sn.logout();
     // The second one is to provide an existing token
-    sn.set_auth_token(token).unwrap();
+    sn.set_auth_token(token);
 }
 ```
 

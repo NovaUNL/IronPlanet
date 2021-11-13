@@ -23,6 +23,11 @@ pub struct Supernova {
     cache: RwLock<ClientCache>,
 }
 
+#[derive(Default)]
+pub struct RequestConfig {
+    pub evade_cache: bool,
+}
+
 impl Supernova {
     pub fn new() -> Arc<Supernova> {
         Arc::new(Supernova::default())
@@ -47,9 +52,12 @@ impl Supernova {
         Ok(())
     }
 
-    pub fn get_departments(self: &Arc<Supernova>) -> Result<Vec<models::Department>, Error> {
-        // Acquire read lock
-        {
+    pub fn get_departments(
+        self: &Arc<Supernova>,
+        conf: &RequestConfig,
+    ) -> Result<Vec<models::Department>, Error> {
+        if !conf.evade_cache {
+            // Acquire read lock
             let cache = self.cache.read().unwrap();
             if cache.departments_populated {
                 return Ok(cache
@@ -58,8 +66,8 @@ impl Supernova {
                     .map(|ndept| ndept.link(self.clone()))
                     .collect::<Vec<models::Department>>());
             }
-        }
-        // Drop read lock
+        } // Drop read lock
+
         let departments = self.base.fetch_departments(&self.http_client)?;
         {
             let mut cache = self.cache.write().unwrap();
@@ -79,9 +87,12 @@ impl Supernova {
         }
     }
 
-    pub fn get_buildings(self: &Arc<Supernova>) -> Result<Vec<models::Building>, Error> {
-        // Acquire read lock
-        {
+    pub fn get_buildings(
+        self: &Arc<Supernova>,
+        conf: &RequestConfig,
+    ) -> Result<Vec<models::Building>, Error> {
+        if !conf.evade_cache {
+            // Acquire read lock
             let cache = self.cache.read().unwrap();
             if cache.buildings_populated {
                 return Ok(cache
@@ -90,8 +101,8 @@ impl Supernova {
                     .map(|building| building.link(self.clone()))
                     .collect::<Vec<models::Building>>());
             }
-        }
-        // Drop read lock
+        } // Drop read lock
+
         let buildings = self.base.fetch_buildings(&self.http_client)?;
         {
             let mut cache = self.cache.write().unwrap();
@@ -111,9 +122,12 @@ impl Supernova {
         }
     }
 
-    pub fn get_places(self: &Arc<Supernova>) -> Result<Vec<models::Place>, Error> {
-        // Acquire read lock
-        {
+    pub fn get_places(
+        self: &Arc<Supernova>,
+        conf: &RequestConfig,
+    ) -> Result<Vec<models::Place>, Error> {
+        if !conf.evade_cache {
+            // Acquire read lock
             let cache = self.cache.read().unwrap();
             if cache.places_populated {
                 return Ok(cache
@@ -143,9 +157,12 @@ impl Supernova {
         }
     }
 
-    pub fn get_classes(self: &Arc<Supernova>) -> Result<Vec<models::Class>, Error> {
-        // Acquire read lock
-        {
+    pub fn get_classes(
+        self: &Arc<Supernova>,
+        conf: &RequestConfig,
+    ) -> Result<Vec<models::Class>, Error> {
+        if !conf.evade_cache {
+            // Acquire read lock
             let cache = self.cache.read().unwrap();
             if cache.classes_populated {
                 return Ok(cache
@@ -154,8 +171,8 @@ impl Supernova {
                     .map(|nclass| nclass.link(self.clone()))
                     .collect::<Vec<models::Class>>());
             }
-        }
-        // Drop read lock
+        } // Drop read lock
+
         let classes = self.base.fetch_classes(&self.http_client)?;
         {
             let mut cache = self.cache.write().unwrap();
@@ -175,9 +192,12 @@ impl Supernova {
         }
     }
 
-    pub fn get_courses(self: &Arc<Supernova>) -> Result<Vec<models::Course>, Error> {
-        // Acquire read lock
-        {
+    pub fn get_courses(
+        self: &Arc<Supernova>,
+        conf: &RequestConfig,
+    ) -> Result<Vec<models::Course>, Error> {
+        if !conf.evade_cache {
+            // Acquire read lock
             let cache = self.cache.read().unwrap();
             if cache.courses_populated {
                 return Ok(cache
@@ -186,8 +206,8 @@ impl Supernova {
                     .map(|ncourse| ncourse.link(self.clone()))
                     .collect::<Vec<models::Course>>());
             }
-        }
-        // Drop read lock
+        } // Drop read lock
+
         let classes = self.base.fetch_courses(&self.http_client)?;
         {
             let mut cache = self.cache.write().unwrap();
@@ -210,15 +230,16 @@ impl Supernova {
     pub fn get_building(
         self: &Arc<Supernova>,
         id: keys::BuildingKey,
+        conf: &RequestConfig,
     ) -> Result<models::Building, Error> {
-        // Acquire read lock
-        {
+        if !conf.evade_cache {
+            // Acquire read lock
             let cache = self.cache.read().unwrap();
             if let Some(nbuilding) = cache.buildings.get(&id) {
                 return Ok(nbuilding.link(self.clone()));
             }
-        }
-        // Drop read lock
+        } // Drop read lock
+
         let nbuilding = self.base.fetch_building(&self.http_client, id)?;
         let mut cache = self.cache.write().unwrap();
         let building = nbuilding.link(self.clone());
@@ -226,15 +247,19 @@ impl Supernova {
         Ok(building)
     }
 
-    pub fn get_place(self: &Arc<Supernova>, id: keys::PlaceKey) -> Result<models::Place, Error> {
-        // Acquire read lock
-        {
+    pub fn get_place(
+        self: &Arc<Supernova>,
+        id: keys::PlaceKey,
+        conf: &RequestConfig,
+    ) -> Result<models::Place, Error> {
+        if !conf.evade_cache {
+            // Acquire read lock
             let cache = self.cache.read().unwrap();
             if let Some(nplace) = cache.places.get(&id) {
                 return Ok(nplace.link(self.clone()));
             }
-        }
-        // Drop read lock
+        } // Drop read lock
+
         let nplace = self.base.fetch_place(&self.http_client, id)?;
         let mut cache = self.cache.write().unwrap();
         let room = nplace.link(self.clone());
@@ -245,15 +270,16 @@ impl Supernova {
     pub fn get_department(
         self: &Arc<Supernova>,
         id: keys::DepartmentKey,
+        conf: &RequestConfig,
     ) -> Result<models::Department, Error> {
-        // Acquire read lock
-        {
+        if !conf.evade_cache {
+            // Acquire read lock
             let cache = self.cache.read().unwrap();
             if let Some(ndepartment) = cache.departments.get(&id) {
                 return Ok(ndepartment.link(self.clone()));
             }
-        }
-        // Drop read lock
+        } // Drop read lock
+
         let ndepartment = self.base.fetch_department(&self.http_client, id)?;
         let mut cache = self.cache.write().unwrap();
         let department = ndepartment.link(self.clone());
@@ -261,15 +287,18 @@ impl Supernova {
         Ok(department)
     }
 
-    pub fn get_course(self: &Arc<Supernova>, id: keys::CourseKey) -> Result<models::Course, Error> {
-        // Acquire read lock
-        {
+    pub fn get_course(
+        self: &Arc<Supernova>,
+        id: keys::CourseKey,
+        conf: &RequestConfig,
+    ) -> Result<models::Course, Error> {
+        if !conf.evade_cache {
+            // Acquire read lock
             let cache = self.cache.read().unwrap();
             if let Some(ncourse) = cache.courses.get(&id) {
                 return Ok(ncourse.link(self.clone()));
             }
-        }
-        // Drop read lock
+        } // Drop read lock
         let ncourse = self.base.fetch_course(&self.http_client, id)?;
         let mut cache = self.cache.write().unwrap();
         let course = ncourse.link(self.clone());
@@ -277,15 +306,19 @@ impl Supernova {
         Ok(course)
     }
 
-    pub fn get_class(self: &Arc<Supernova>, id: keys::ClassKey) -> Result<models::Class, Error> {
-        // Acquire read lock
-        {
+    pub fn get_class(
+        self: &Arc<Supernova>,
+        id: keys::ClassKey,
+        conf: &RequestConfig,
+    ) -> Result<models::Class, Error> {
+        if !conf.evade_cache {
+            // Acquire read lock
             let cache = self.cache.read().unwrap();
             if let Some(nclass) = cache.classes.get(&id) {
                 return Ok(nclass.link(self.clone()));
             }
-        }
-        // Drop read lock
+        } // Drop read lock
+
         let nclass = self.base.fetch_class(&self.http_client, id)?;
         let mut cache = self.cache.write().unwrap();
         let klass = nclass.link(self.clone());
@@ -296,21 +329,23 @@ impl Supernova {
     pub fn get_class_instance(
         self: &Arc<Supernova>,
         id: keys::ClassInstanceKey,
+        conf: &RequestConfig,
     ) -> Result<models::ClassInstance, Error> {
-        // Acquire read lock
-        {
+        if !conf.evade_cache {
+            // Acquire read lock
             let cache = self.cache.read().unwrap();
             if let Some(nclass_inst) = cache.class_instances.get(&id) {
                 return Ok(nclass_inst.link(self.clone()));
             }
-        }
-        // Drop read lock
+        } // Drop read lock
         let nclass_inst = self
             .authenticated
             .fetch_class_instance(&self.http_client, id)?;
         let mut cache = self.cache.write().unwrap();
         nclass_inst.enrollments.iter().for_each(|nenrollment| {
-            cache.enrollments.insert(nenrollment.id, nenrollment.clone());
+            cache
+                .enrollments
+                .insert(nenrollment.id, nenrollment.clone());
         });
         nclass_inst.shifts.iter().for_each(|nshift| {
             cache.class_shifts.insert(nshift.id, nshift.clone());
@@ -323,15 +358,15 @@ impl Supernova {
     pub fn get_student(
         self: &Arc<Supernova>,
         id: keys::StudentKey,
+        conf: &RequestConfig,
     ) -> Result<models::Student, Error> {
-        // Acquire read lock
-        {
+        if !conf.evade_cache {
+            // Acquire read lock
             let cache = self.cache.read().unwrap();
             if let Some(nstudent) = cache.students.get(&id) {
                 return Ok(nstudent.link(self.clone()));
             }
-        }
-        // Drop read lock
+        } // Drop read lock
         let nstudent = self.authenticated.fetch_student(&self.http_client, id)?;
         let mut cache = self.cache.write().unwrap();
         let student = nstudent.link(self.clone());
@@ -342,15 +377,16 @@ impl Supernova {
     pub fn get_teacher(
         self: &Arc<Supernova>,
         id: keys::ClassKey,
+        conf: &RequestConfig,
     ) -> Result<models::Teacher, Error> {
-        // Acquire read lock
-        {
+        if !conf.evade_cache {
+            // Acquire read lock
             let cache = self.cache.read().unwrap();
             if let Some(nteacher) = cache.teachers.get(&id) {
                 return Ok(nteacher.link(self.clone()));
             }
-        }
-        // Drop read lock
+        } // Drop read lock
+
         let nteacher = self.authenticated.fetch_teacher(&self.http_client, id)?;
         let mut cache = self.cache.write().unwrap();
         let teacher = nteacher.link(self.clone());
@@ -358,18 +394,19 @@ impl Supernova {
         Ok(teacher)
     }
 
-    pub fn fetch_enrollment(
+    pub fn get_enrollment(
         self: &Arc<Supernova>,
         id: keys::ClassKey,
+        conf: &RequestConfig,
     ) -> Result<models::Enrollment, Error> {
-        // Acquire read lock
-        {
+        if !conf.evade_cache {
+            // Acquire read lock
             let cache = self.cache.read().unwrap();
             if let Some(nenrollment) = cache.enrollments.get(&id) {
                 return Ok(nenrollment.link(self.clone()));
             }
-        }
-        // Drop read lock
+        } // Drop read lock
+
         let nenrollment = self.authenticated.fetch_enrollment(&self.http_client, id)?;
         let mut cache = self.cache.write().unwrap();
         let enrollment = nenrollment.link(self.clone());
@@ -377,18 +414,19 @@ impl Supernova {
         Ok(enrollment)
     }
 
-    pub fn fetch_shift(
+    pub fn get_shift(
         self: &Arc<Supernova>,
         id: keys::ClassKey,
+        conf: &RequestConfig,
     ) -> Result<models::ClassShift, Error> {
-        // Acquire read lock
-        {
+        if !conf.evade_cache {
+            // Acquire read lock
             let cache = self.cache.read().unwrap();
             if let Some(nshift) = cache.class_shifts.get(&id) {
                 return Ok(nshift.link(self.clone()));
             }
-        }
-        // Drop read lock
+        } // Drop read lock
+
         let nshift = self.authenticated.fetch_shift(&self.http_client, id)?;
         let mut cache = self.cache.write().unwrap();
         let shift = nshift.link(self.clone());
@@ -397,11 +435,12 @@ impl Supernova {
     }
 
     pub fn warmup(self: &Arc<Supernova>) -> Result<(), Error> {
-        self.get_buildings()?;
-        self.get_courses()?;
-        self.get_classes()?;
-        self.get_departments()?;
-        self.get_places()?;
+        let conf = RequestConfig::default();
+        self.get_buildings(&conf)?;
+        self.get_courses(&conf)?;
+        self.get_classes(&conf)?;
+        self.get_departments(&conf)?;
+        self.get_places(&conf)?;
         Ok(())
     }
 }

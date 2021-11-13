@@ -1,7 +1,7 @@
 use crate::errors::Error;
 use crate::keys::*;
 use crate::models::*;
-use crate::Supernova;
+use crate::{RequestConfig, Supernova};
 use std::fmt;
 use std::marker::PhantomData;
 use std::sync::Arc;
@@ -50,7 +50,7 @@ impl<T: CoersibleEntity<I>, I: fmt::Debug> fmt::Debug for ObjRef<T, I> {
 
 impl CoersibleEntity<DepartmentKey> for Department {
     fn coerce(id: &DepartmentKey, client: Arc<Supernova>) -> Result<Self, Error> {
-        client.get_department(*id)
+        client.get_department(*id, &RequestConfig::default())
     }
 }
 
@@ -58,7 +58,7 @@ impl ObjRef<Department, DepartmentKey> {}
 
 impl CoersibleEntity<BuildingKey> for Building {
     fn coerce(id: &BuildingKey, client: Arc<Supernova>) -> Result<Self, Error> {
-        client.get_building(*id)
+        client.get_building(*id, &RequestConfig::default())
     }
 }
 
@@ -66,7 +66,7 @@ impl ObjRef<Building, BuildingKey> {}
 
 impl CoersibleEntity<PlaceKey> for Place {
     fn coerce(id: &PlaceKey, client: Arc<Supernova>) -> Result<Self, Error> {
-        client.get_place(*id)
+        client.get_place(*id, &RequestConfig::default())
     }
 }
 
@@ -74,7 +74,7 @@ impl ObjRef<Place, PlaceKey> {}
 
 impl CoersibleEntity<CourseKey> for Course {
     fn coerce(id: &CourseKey, client: Arc<Supernova>) -> Result<Course, Error> {
-        client.get_course(*id)
+        client.get_course(*id, &RequestConfig::default())
     }
 }
 
@@ -82,7 +82,7 @@ impl ObjRef<Course, CourseKey> {}
 
 impl CoersibleEntity<ClassKey> for Class {
     fn coerce(id: &ClassKey, client: Arc<Supernova>) -> Result<Self, Error> {
-        client.get_class(*id)
+        client.get_class(*id, &RequestConfig::default())
     }
 }
 
@@ -90,7 +90,7 @@ impl ObjRef<Class, ClassKey> {}
 
 impl CoersibleEntity<ClassInstanceKey> for ClassInstance {
     fn coerce(id: &ClassInstanceKey, client: Arc<Supernova>) -> Result<Self, Error> {
-        client.get_class_instance(*id)
+        client.get_class_instance(*id, &RequestConfig::default())
     }
 }
 
@@ -98,7 +98,7 @@ impl ObjRef<ClassInstance, ClassInstanceKey> {}
 
 impl CoersibleEntity<StudentKey> for Student {
     fn coerce(id: &StudentKey, client: Arc<Supernova>) -> Result<Self, Error> {
-        client.get_student(*id)
+        client.get_student(*id, &RequestConfig::default())
     }
 }
 
@@ -106,7 +106,7 @@ impl ObjRef<Student, StudentKey> {}
 
 impl CoersibleEntity<TeacherKey> for Teacher {
     fn coerce(id: &TeacherKey, client: Arc<Supernova>) -> Result<Self, Error> {
-        client.get_teacher(*id)
+        client.get_teacher(*id, &RequestConfig::default())
     }
 }
 
@@ -114,7 +114,7 @@ impl ObjRef<Teacher, TeacherKey> {}
 
 impl CoersibleEntity<EnrollmentKey> for Enrollment {
     fn coerce(id: &EnrollmentKey, client: Arc<Supernova>) -> Result<Self, Error> {
-        client.fetch_enrollment(*id)
+        client.get_enrollment(*id, &RequestConfig::default())
     }
 }
 
@@ -122,7 +122,7 @@ impl ObjRef<Enrollment, EnrollmentKey> {}
 
 impl CoersibleEntity<ShiftKey> for ClassShift {
     fn coerce(id: &ShiftKey, client: Arc<Supernova>) -> Result<Self, Error> {
-        client.fetch_shift(*id)
+        client.get_shift(*id, &RequestConfig::default())
     }
 }
 
