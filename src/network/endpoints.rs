@@ -28,6 +28,7 @@ lazy_static! {
 
 pub enum Endpoint {
     Login,
+    Logout,
     TokenValidation,
     Buildings,
     Building(BuildingKey),
@@ -58,6 +59,7 @@ impl fmt::Display for Endpoint {
         let _ = f.write_str("/api/");
         match self {
             Endpoint::Login => f.write_str("login"),
+            Endpoint::Logout => f.write_str("logout"),
             Endpoint::TokenValidation => f.write_str("validation"),
             Endpoint::Buildings => f.write_str("buildings"),
             Endpoint::Building(id) => f.write_fmt(format_args!("building/{}", id)),
@@ -114,7 +116,8 @@ impl BaseSupernova {
 
     pub(crate) fn verify(&self, http: &HTTPClient, token: AuthToken) -> Result<(), Error> {
         let request = RequestBuilder::new(&Endpoint::TokenValidation.to_string())
-            .set_method(Method::POST)
+            .set_method(Method::GET)
+            .add_header("Authorization".to_string(), format!("Token {}", token))
             .set_body(serde_json::json!(nmodels::TokenCredentials::new(token)))
             .build();
         let json_str = http.send(request)?;
@@ -217,6 +220,27 @@ impl AuthenticatedSupernova {
         };
 
         let json_str = http.send(request)?;
+        Ok(serde_json::from_str(&json_str).map_err(|_| Error::ParsingError)?)
+    }
+
+    pub(crate) fn logout(
+        &self,
+        http: &HTTPClient,
+    ) -> Result<nmodels::TokenResult, Error> {
+        let request = if let Some(credentials) = self.credentials.lock().unwrap().borrow().as_ref()
+        {
+            RequestBuilder::new(&Endpoint::Logout.to_string())
+                .add_header(
+                    "Authorization".to_string(),
+                    format!("Token {}", credentials),
+                )
+                .set_method(Method::DELETE)
+                .build()
+        } else {
+            return Err(Error::MissingAuthenticationError);
+        };
+        let json_str = http.send(request)?;
+
         Ok(serde_json::from_str(&json_str).map_err(|_| Error::ParsingError)?)
     }
 
