@@ -1,14 +1,30 @@
 use crate::keys::*;
-use crate::network::{ http::*, models as nmodels};
+use crate::network::{http::*, models as nmodels};
 use crate::AuthToken;
 use crate::{keys, Error};
+use lazy_static::lazy_static;
 use serde::de::DeserializeOwned;
 use std::borrow::BorrowMut;
 use std::cell::RefCell;
+use std::env;
 use std::fmt;
 use std::sync::Mutex;
 
-const UPSTREAM: &str = "https://supernova.nunl.pt/";
+lazy_static! {
+    static ref UPSTREAM: String = {
+        let default = "https://supernova.nunl.pt";
+        // Allowing this override in release builds would allow token hijacking
+        if !cfg!(debug_assertions){
+            if let Ok(url) = env::var("SUPERNOVA_UPSTREAM") {
+                url
+            } else {
+                default.to_string()
+            }
+        } else {
+            default.to_string()
+        }
+    };
+}
 
 pub enum Endpoint {
     Login,
@@ -38,8 +54,8 @@ pub enum Endpoint {
 
 impl fmt::Display for Endpoint {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let _ = f.write_str(UPSTREAM);
-        let _ = f.write_str("api/");
+        let _ = f.write_str(&UPSTREAM);
+        let _ = f.write_str("/api/");
         match self {
             Endpoint::Login => f.write_str("login"),
             Endpoint::TokenValidation => f.write_str("validation"),
