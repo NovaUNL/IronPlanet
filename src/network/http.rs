@@ -32,7 +32,7 @@ impl HTTPClient {
             | ErrorKind::InvalidProxyUrl
             | ErrorKind::ProxyConnect
             | ErrorKind::ProxyUnauthorized => Error::NetworkError,
-            ErrorKind::HTTP => Error::ServerError,
+            ErrorKind::HTTP => Error::ClientError,
             _ => Error::ServerError,
         })?;
 
