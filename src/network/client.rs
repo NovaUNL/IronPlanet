@@ -1,89 +1,13 @@
-use std::sync::{Arc, RwLock};
-use serde::de::DeserializeOwned;
+use crate::network::cache::ClientCache;
+use crate::network::endpoints::*;
+use crate::network::http::*;
 use crate::network::models as nmodels;
 use crate::{keys, Error};
-use crate::network::cache::ClientCache;
-use crate::network::http::*;
-use crate::network::endpoints::*;
-use crate::models;
-
-
-#[derive(Default)]
-struct NetworkClientBase {}
-
-
-impl NetworkClientBase {
-    fn generic_fetch<T: DeserializeOwned>(&self, http: &HTTPClient, url: &str) -> Result<T, Error> {
-        let request = RequestBuilder::new(url).build();
-        let json_str = http.send(request).map_err(|_| Error::NamelessError)?;
-
-        Ok(serde_json::from_str(&json_str).map_err(|_| Error::NamelessError)?)
-    }
-
-    fn fetch_departments(&self, http: &HTTPClient) -> Result<Vec<nmodels::Department>, Error> {
-        // let request = RequestBuilder::new(&Endpoint::Departments.to_string()).build();
-        // let json_str = http.send(request).map_err(|_| Error::NamelessError)?;
-        //
-        // Ok(serde_json::from_str(&json_str).map_err(|_| Error::NamelessError)?)
-        self.generic_fetch(http, &Endpoint::Departments.to_string())
-    }
-
-
-    fn fetch_buildings(&self, http: &HTTPClient) -> Result<Vec<nmodels::Building>, Error> {
-        let request = RequestBuilder::new(&Endpoint::Buildings.to_string()).build();
-        let json_str = http.send(request).map_err(|_| Error::NamelessError)?;
-        Ok(serde_json::from_str(&json_str).map_err(|_| Error::NamelessError)?)
-    }
-
-    fn fetch_classes(&self, http: &HTTPClient) -> Result<Vec<nmodels::Class>, Error> {
-        let request = RequestBuilder::new(&Endpoint::Classes.to_string()).build();
-        let json_str = http.send(request).map_err(|_| Error::NamelessError)?;
-        Ok(serde_json::from_str(&json_str).map_err(|_| Error::NamelessError)?)
-    }
-
-    fn fetch_courses(&self, http: &HTTPClient) -> Result<Vec<nmodels::Course>, Error> {
-        let request = RequestBuilder::new(&Endpoint::Courses.to_string()).build();
-        let json_str = http.send(request).map_err(|_| Error::NamelessError)?;
-        Ok(serde_json::from_str(&json_str).map_err(|_| Error::NamelessError)?)
-    }
-
-    fn fetch_rooms(&self, http: &HTTPClient) -> Result<Vec<nmodels::Room>, Error> {
-        let request = RequestBuilder::new(&Endpoint::Rooms.to_string()).build();
-        let json_str = http.send(request).map_err(|_| Error::NamelessError)?;
-        Ok(serde_json::from_str(&json_str).map_err(|_| Error::NamelessError)?)
-    }
-
-    fn fetch_building(&self, http: &HTTPClient, key: keys::BuildingKey) -> Result<nmodels::Building, Error> {
-        let request = RequestBuilder::new(&Endpoint::Building(key).to_string()).build();
-        let json_str = http.send(request).map_err(|_| Error::FooError(1))?;
-        Ok(serde_json::from_str(&json_str).map_err(|_| Error::ParsingError)?)
-    }
-
-    fn fetch_room(&self, http: &HTTPClient, key: keys::RoomKey) -> Result<nmodels::Room, Error> {
-        let request = RequestBuilder::new(&Endpoint::Room(key).to_string()).build();
-        let json_str = http.send(request).map_err(|_| Error::NamelessError)?;
-        Ok(serde_json::from_str(&json_str).map_err(|_| Error::NamelessError)?)
-    }
-
-    fn fetch_department(&self, http: &HTTPClient, key: keys::DepartmentKey) -> Result<nmodels::Department, Error> {
-        let request = RequestBuilder::new(&Endpoint::Department(key).to_string()).build();
-        let json_str = http.send(request).map_err(|_| Error::NamelessError)?;
-        Ok(serde_json::from_str(&json_str).map_err(|_| Error::NamelessError)?)
-    }
-
-    fn fetch_course(&self, http: &HTTPClient, key: keys::CourseKey) -> Result<nmodels::Course, Error> {
-        let request = RequestBuilder::new(&Endpoint::Course(key).to_string()).build();
-        let json_str = http.send(request).map_err(|_| Error::NamelessError)?;
-        Ok(serde_json::from_str(&json_str).map_err(|_| Error::NamelessError)?)
-    }
-
-    fn fetch_class(&self, http: &HTTPClient, key: keys::ClassKey) -> Result<nmodels::Class, Error> {
-        let request = RequestBuilder::new(&Endpoint::Class(key).to_string()).build();
-        let json_str = http.send(request).map_err(|_| Error::NamelessError)?;
-        Ok(serde_json::from_str(&json_str).map_err(|_| Error::NamelessError)?)
-    }
-}
-
+use crate::{models, AuthToken};
+use serde::de::DeserializeOwned;
+use std::borrow::BorrowMut;
+use std::cell::RefCell;
+use std::sync::{Arc, Mutex, RwLock};
 
 #[derive(Default)]
 pub(crate) struct NetworkClient {
@@ -94,14 +18,31 @@ pub(crate) struct NetworkClient {
 }
 
 impl NetworkClient {
-    pub(crate) fn fetch_departments(&self, self_ref: Arc<NetworkClient>) -> Result<Vec<models::Department>, Error> {
+    pub(crate) fn login(&self, creds: nmodels::BasicAuthCredentials) -> Result<AuthToken, Error> {
+        let token = self.base.login(&self.http_client, creds)?;
+        self.authenticated.set_token(token.token.clone());
+        Ok(token.token)
+    }
+
+    pub(crate) fn verify_login(&self, token: AuthToken) -> Result<(), Error> {
+        self.base.verify(&self.http_client, token.clone())?;
+        self.authenticated.set_token(token);
+        Ok(())
+    }
+
+    pub(crate) fn fetch_departments(
+        &self,
+        self_ref: Arc<NetworkClient>,
+    ) -> Result<Vec<models::Department>, Error> {
         // Acquire read lock
         {
             let cache = self.cache.read().unwrap();
             if cache.departments_populated {
-                return Ok(cache.departments.values().map(|ndept| {
-                    ndept.link(self_ref.clone())
-                }).collect::<Vec<models::Department>>());
+                return Ok(cache
+                    .departments
+                    .values()
+                    .map(|ndept| ndept.link(self_ref.clone()))
+                    .collect::<Vec<models::Department>>());
             }
         }
         // Drop read lock
@@ -116,20 +57,27 @@ impl NetworkClient {
         // Change write lock to read lock
         {
             let cache = self.cache.read().unwrap();
-            Ok(cache.departments.values().map(|ndept| {
-                ndept.link(self_ref.clone())
-            }).collect())
+            Ok(cache
+                .departments
+                .values()
+                .map(|ndept| ndept.link(self_ref.clone()))
+                .collect())
         }
     }
 
-    pub(crate) fn fetch_buildings(&self, self_ref: Arc<NetworkClient>) -> Result<Vec<models::Building>, Error> {
+    pub(crate) fn fetch_buildings(
+        &self,
+        self_ref: Arc<NetworkClient>,
+    ) -> Result<Vec<models::Building>, Error> {
         // Acquire read lock
         {
             let cache = self.cache.read().unwrap();
             if cache.buildings_populated {
-                return Ok(cache.buildings.values().map(|building| {
-                    building.link(self_ref.clone())
-                }).collect::<Vec<models::Building>>());
+                return Ok(cache
+                    .buildings
+                    .values()
+                    .map(|building| building.link(self_ref.clone()))
+                    .collect::<Vec<models::Building>>());
             }
         }
         // Drop read lock
@@ -144,47 +92,62 @@ impl NetworkClient {
         // Change write lock to read lock
         {
             let cache = self.cache.read().unwrap();
-            Ok(cache.buildings.values().map(|nbuilding| {
-                nbuilding.link(self_ref.clone())
-            }).collect())
+            Ok(cache
+                .buildings
+                .values()
+                .map(|nbuilding| nbuilding.link(self_ref.clone()))
+                .collect())
         }
     }
-    pub(crate) fn fetch_rooms(&self, self_ref: Arc<NetworkClient>) -> Result<Vec<models::Room>, Error> {
+
+    pub(crate) fn fetch_places(
+        &self,
+        self_ref: Arc<NetworkClient>,
+    ) -> Result<Vec<models::Place>, Error> {
         // Acquire read lock
         {
             let cache = self.cache.read().unwrap();
-            if cache.rooms_populated {
-                return Ok(cache.rooms.values().map(|room| {
-                    room.link(self_ref.clone())
-                }).collect::<Vec<models::Room>>());
+            if cache.places_populated {
+                return Ok(cache
+                    .places
+                    .values()
+                    .map(|places| places.link(self_ref.clone()))
+                    .collect::<Vec<models::Place>>());
             }
         }
         // Drop read lock
-        let rooms = self.base.fetch_rooms(&self.http_client)?;
+        let nplaces = self.base.fetch_places(&self.http_client)?;
         {
             let mut cache = self.cache.write().unwrap();
-            cache.rooms_populated = true;
-            rooms.into_iter().for_each(|nroom| {
-                cache.rooms.insert(nroom.id, nroom);
+            cache.places_populated = true;
+            nplaces.into_iter().for_each(|nplace| {
+                cache.places.insert(nplace.id, nplace);
             });
         }
         // Change write lock to read lock
         {
             let cache = self.cache.read().unwrap();
-            Ok(cache.rooms.values().map(|nroom| {
-                nroom.link(self_ref.clone())
-            }).collect())
+            Ok(cache
+                .places
+                .values()
+                .map(|nplace| nplace.link(self_ref.clone()))
+                .collect())
         }
     }
 
-    pub(crate) fn fetch_classes(&self, self_ref: Arc<NetworkClient>) -> Result<Vec<models::Class>, Error> {
+    pub(crate) fn fetch_classes(
+        &self,
+        self_ref: Arc<NetworkClient>,
+    ) -> Result<Vec<models::Class>, Error> {
         // Acquire read lock
         {
             let cache = self.cache.read().unwrap();
             if cache.classes_populated {
-                return Ok(cache.classes.values().map(|nclass| {
-                    nclass.link(self_ref.clone())
-                }).collect::<Vec<models::Class>>());
+                return Ok(cache
+                    .classes
+                    .values()
+                    .map(|nclass| nclass.link(self_ref.clone()))
+                    .collect::<Vec<models::Class>>());
             }
         }
         // Drop read lock
@@ -199,20 +162,27 @@ impl NetworkClient {
         // Change write lock to read lock
         {
             let cache = self.cache.read().unwrap();
-            Ok(cache.classes.values().map(|nbuilding| {
-                nbuilding.link(self_ref.clone())
-            }).collect())
+            Ok(cache
+                .classes
+                .values()
+                .map(|nbuilding| nbuilding.link(self_ref.clone()))
+                .collect())
         }
     }
 
-    pub(crate) fn fetch_courses(&self, self_ref: Arc<NetworkClient>) -> Result<Vec<models::Course>, Error> {
+    pub(crate) fn fetch_courses(
+        &self,
+        self_ref: Arc<NetworkClient>,
+    ) -> Result<Vec<models::Course>, Error> {
         // Acquire read lock
         {
             let cache = self.cache.read().unwrap();
             if cache.courses_populated {
-                return Ok(cache.courses.values().map(|ncourse| {
-                    ncourse.link(self_ref.clone())
-                }).collect::<Vec<models::Course>>());
+                return Ok(cache
+                    .courses
+                    .values()
+                    .map(|ncourse| ncourse.link(self_ref.clone()))
+                    .collect::<Vec<models::Course>>());
             }
         }
         // Drop read lock
@@ -227,9 +197,11 @@ impl NetworkClient {
         // Change write lock to read lock
         {
             let cache = self.cache.read().unwrap();
-            Ok(cache.courses.values().map(|ncourse| {
-                ncourse.link(self_ref.clone())
-            }).collect())
+            Ok(cache
+                .courses
+                .values()
+                .map(|ncourse| ncourse.link(self_ref.clone()))
+                .collect())
         }
     }
 
@@ -253,23 +225,23 @@ impl NetworkClient {
         Ok(building)
     }
 
-    pub(crate) fn fetch_room(
+    pub(crate) fn fetch_place(
         &self,
-        id: keys::BuildingKey,
+        id: keys::PlaceKey,
         self_ref: Arc<NetworkClient>,
-    ) -> Result<models::Room, Error> {
+    ) -> Result<models::Place, Error> {
         // Acquire read lock
         {
             let cache = self.cache.read().unwrap();
-            if let Some(nroom) = cache.rooms.get(&id) {
-                return Ok(nroom.link(self_ref.clone()));
+            if let Some(nplace) = cache.places.get(&id) {
+                return Ok(nplace.link(self_ref.clone()));
             }
         }
         // Drop read lock
-        let nroom = self.base.fetch_room(&self.http_client, id)?;
+        let nplace = self.base.fetch_place(&self.http_client, id)?;
         let mut cache = self.cache.write().unwrap();
-        let room = nroom.link(self_ref.clone());
-        cache.rooms.insert(nroom.id, nroom);
+        let room = nplace.link(self_ref.clone());
+        cache.places.insert(nplace.id, nplace);
         Ok(room)
     }
 
@@ -346,7 +318,9 @@ impl NetworkClient {
             }
         }
         // Drop read lock
-        let nclass_inst = self.authenticated.fetch_class_instance(&self.http_client, id)?;
+        let nclass_inst = self
+            .authenticated
+            .fetch_class_instance(&self.http_client, id)?;
         let mut cache = self.cache.write().unwrap();
         let class_inst = nclass_inst.link(self_ref.clone());
         cache.class_instances.insert(nclass_inst.id, nclass_inst);
@@ -434,52 +408,163 @@ impl NetworkClient {
     }
 }
 
+#[derive(Default)]
+struct NetworkClientBase {}
 
-pub type AuthToken = String;
+impl NetworkClientBase {
+    fn generic_fetch<T: DeserializeOwned>(&self, http: &HTTPClient, url: &str) -> Result<T, Error> {
+        let request = RequestBuilder::new(url).build();
+        let json_str = http.send(request).map_err(|_| Error::ParsingError)?;
 
-pub(crate) struct Credentials {
-    sn_username: String,
-    sn_auth_token: String,
+        Ok(serde_json::from_str(&json_str).map_err(|_| Error::NamelessError)?)
+    }
+
+    fn login(
+        &self,
+        http: &HTTPClient,
+        credentials: nmodels::BasicAuthCredentials,
+    ) -> Result<nmodels::TokenResult, Error> {
+        let request = RequestBuilder::new(&Endpoint::Login.to_string())
+            .set_method(Method::POST)
+            .set_body(serde_json::json!(credentials))
+            .build();
+        let json_str = http.send(request)?;
+
+        Ok(serde_json::from_str(&json_str).map_err(|_| Error::ParsingError)?)
+    }
+
+    fn verify(&self, http: &HTTPClient, token: AuthToken) -> Result<(), Error> {
+        let request = RequestBuilder::new(&Endpoint::TokenValidation.to_string())
+            .set_method(Method::POST)
+            .set_body(serde_json::json!(nmodels::TokenCredentials::new(token)))
+            .build();
+        let json_str = http.send(request)?;
+
+        Ok(serde_json::from_str(&json_str).map_err(|_| Error::ParsingError)?)
+    }
+
+    fn fetch_departments(&self, http: &HTTPClient) -> Result<Vec<nmodels::Department>, Error> {
+        self.generic_fetch(http, &Endpoint::Departments.to_string())
+    }
+
+    fn fetch_buildings(&self, http: &HTTPClient) -> Result<Vec<nmodels::Building>, Error> {
+        self.generic_fetch(http, &Endpoint::Buildings.to_string())
+    }
+
+    fn fetch_classes(&self, http: &HTTPClient) -> Result<Vec<nmodels::Class>, Error> {
+        self.generic_fetch(http, &Endpoint::Classes.to_string())
+    }
+
+    fn fetch_courses(&self, http: &HTTPClient) -> Result<Vec<nmodels::Course>, Error> {
+        self.generic_fetch(http, &Endpoint::Courses.to_string())
+    }
+
+    fn fetch_places(&self, http: &HTTPClient) -> Result<Vec<nmodels::Place>, Error> {
+        self.generic_fetch(http, &Endpoint::Places.to_string())
+    }
+
+    fn fetch_building(
+        &self,
+        http: &HTTPClient,
+        key: keys::BuildingKey,
+    ) -> Result<nmodels::Building, Error> {
+        self.generic_fetch(http, &Endpoint::Building(key).to_string())
+    }
+
+    fn fetch_place(&self, http: &HTTPClient, key: keys::RoomKey) -> Result<nmodels::Place, Error> {
+        self.generic_fetch(http, &Endpoint::Place(key).to_string())
+    }
+
+    fn fetch_department(
+        &self,
+        http: &HTTPClient,
+        key: keys::DepartmentKey,
+    ) -> Result<nmodels::Department, Error> {
+        self.generic_fetch(http, &Endpoint::Department(key).to_string())
+    }
+
+    fn fetch_course(
+        &self,
+        http: &HTTPClient,
+        key: keys::CourseKey,
+    ) -> Result<nmodels::Course, Error> {
+        self.generic_fetch(http, &Endpoint::Course(key).to_string())
+    }
+
+    fn fetch_class(&self, http: &HTTPClient, key: keys::ClassKey) -> Result<nmodels::Class, Error> {
+        self.generic_fetch(http, &Endpoint::Class(key).to_string())
+    }
 }
-
 
 #[derive(Default)]
 struct NetworkClientAuthenticated {
-    credentials: Option<Credentials>,
+    credentials: Mutex<RefCell<Option<AuthToken>>>,
 }
 
 impl NetworkClientAuthenticated {
+    fn set_token(&self, token: AuthToken) {
+        self.credentials
+            .lock()
+            .unwrap()
+            .borrow_mut()
+            .swap(&RefCell::new(Some(token)));
+    }
+
     fn generic_fetch<T: DeserializeOwned>(&self, http: &HTTPClient, url: &str) -> Result<T, Error> {
         let request = RequestBuilder::new(url)
             .add_header(
                 "Authorization".to_string(),
-                format!("Token {}", self.credentials.as_ref().unwrap().sn_auth_token))
+                format!(
+                    "Token {}",
+                    self.credentials.lock().unwrap().borrow().as_ref().unwrap()
+                ),
+            )
             .build();
         let json_str = http.send(request).map_err(|_| Error::NamelessError)?;
         // request = request.set("Authorization", &format!("Token {}", self.credentials.as_ref().unwrap().sn_auth_token));
         Ok(serde_json::from_str(&json_str).map_err(|_| Error::NamelessError)?)
     }
 
-    fn fetch_class_instance(&self, http: &HTTPClient, key: keys::ClassInstanceKey) -> Result<nmodels::ClassInstance, Error> {
+    fn fetch_class_instance(
+        &self,
+        http: &HTTPClient,
+        key: keys::ClassInstanceKey,
+    ) -> Result<nmodels::ClassInstance, Error> {
         self.generic_fetch(http, &Endpoint::ClassInstance(key).to_string())
         // let request = RequestBuilder::new(&Endpoint::ClassInstance(key).to_string()).build();
         // let json_str = http.send(request).map_err(|_| Error::NamelessError)?;
         // Ok(serde_json::from_str(&json_str).map_err(|_| Error::NamelessError)?)
     }
 
-    fn fetch_student(&self, http: &HTTPClient, key: keys::StudentKey) -> Result<nmodels::Student, Error> {
+    fn fetch_student(
+        &self,
+        http: &HTTPClient,
+        key: keys::StudentKey,
+    ) -> Result<nmodels::Student, Error> {
         self.generic_fetch(http, &Endpoint::Student(key).to_string())
     }
 
-    fn fetch_teacher(&self, http: &HTTPClient, key: keys::TeacherKey) -> Result<nmodels::Teacher, Error> {
+    fn fetch_teacher(
+        &self,
+        http: &HTTPClient,
+        key: keys::TeacherKey,
+    ) -> Result<nmodels::Teacher, Error> {
         self.generic_fetch(http, &Endpoint::Teacher(key).to_string())
     }
 
-    fn fetch_enrollment(&self, http: &HTTPClient, key: keys::TeacherKey) -> Result<nmodels::Enrollment, Error> {
+    fn fetch_enrollment(
+        &self,
+        http: &HTTPClient,
+        key: keys::TeacherKey,
+    ) -> Result<nmodels::Enrollment, Error> {
         self.generic_fetch(http, &Endpoint::Enrollment(key).to_string())
     }
 
-    fn fetch_shift(&self, http: &HTTPClient, key: keys::TeacherKey) -> Result<nmodels::ClassShift, Error> {
+    fn fetch_shift(
+        &self,
+        http: &HTTPClient,
+        key: keys::TeacherKey,
+    ) -> Result<nmodels::ClassShift, Error> {
         self.generic_fetch(http, &Endpoint::Shift(key).to_string())
     }
 }

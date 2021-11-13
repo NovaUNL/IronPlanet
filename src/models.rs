@@ -1,7 +1,7 @@
 use crate::coersion::ObjRef;
 
-use crate::keys::*;
 use crate::errors::Error;
+use crate::keys::*;
 pub use crate::network::models::{ClassInfo, ClassInfoEntry, ClassInfoSources};
 
 #[derive(Debug, PartialEq)]
@@ -106,6 +106,18 @@ pub enum EventType {
     Talk,
 }
 
+#[derive(Debug, PartialEq)]
+pub enum RoomType {
+    Generic,
+    Classroom,
+    Auditorium,
+    Laboratory,
+    Computer,
+    Meeting,
+    Masters,
+    Cabinet,
+}
+
 pub struct Department {
     pub id: u32,
     pub name: String,
@@ -118,13 +130,31 @@ pub struct Building {
     pub id: u32,
     pub name: String,
     pub abbreviation: String,
-    pub(crate) rooms: Vec<ObjRef<Room, RoomKey>>,
+    pub(crate) places: Vec<ObjRef<Place, PlaceKey>>,
+}
+
+pub struct Place {
+    pub id: PlaceKey,
+    pub variant: PlaceVariant,
+    pub name: String,
+    pub floor: i8,
+    pub(crate) building: Option<ObjRef<Building, BuildingKey>>,
+    pub picture: Option<String>,
+    pub picture_cover: Option<String>,
+}
+
+pub enum PlaceVariant {
+    Generic,
+    Room(Room),
 }
 
 pub struct Room {
-    pub id: u32,
-    pub name: String,
-    pub(crate) building: ObjRef<Building, BuildingKey>,
+    pub(crate) department: Option<ObjRef<Department, DepartmentKey>>,
+    pub capacity: Option<u16>,
+    pub door_number: Option<u16>,
+    pub room_type: RoomType,
+    pub description: Option<String>,
+    pub equipment: Option<String>,
 }
 
 pub struct Course {
@@ -189,7 +219,7 @@ pub struct ClassShiftInstance {
     pub weekday: Weekday,
     pub start: u16,
     pub duration: u16,
-    pub(crate) room: Option<ObjRef<Room, RoomKey>>,
+    pub(crate) room: Option<ObjRef<Place, PlaceKey>>,
 }
 
 pub struct ClassInstanceFiles {
@@ -197,7 +227,6 @@ pub struct ClassInstanceFiles {
     pub community: Vec<ClassInstanceFile>,
     // pub  denied: Vec<ClassInstanceFile>,
 }
-
 
 pub struct ClassInstanceFile {
     pub id: u32,
@@ -232,7 +261,6 @@ pub struct Student {
     pub url: String,
 }
 
-
 pub struct Teacher {
     pub id: u32,
     pub name: String,
@@ -247,7 +275,6 @@ pub struct Teacher {
     pub(crate) shifts: Vec<ObjRef<ClassShift, ShiftKey>>,
     pub url: String,
 }
-
 
 pub struct Enrollment {
     pub id: EnrollmentKey,
@@ -285,24 +312,35 @@ impl Department {
     }
 }
 
-
 impl Building {
-    pub fn get_rooms(&self) -> Result<Vec<Room>, Error> {
+    pub fn get_rooms(&self) -> Result<Vec<Place>, Error> {
         let mut result = vec![];
-        for room_ref in self.rooms.iter() {
-            result.push(room_ref.coerce()?)
+        for places_ref in self.places.iter() {
+            result.push(places_ref.coerce()?)
         }
         Ok(result)
     }
 }
 
-
-impl Room {
-    pub fn get_building(&self) -> Result<Building, Error> {
-        Ok(self.building.coerce()?)
+impl Place {
+    pub fn get_building(&self) -> Result<Option<Building>, Error> {
+        Ok(if let Some(building) = &self.building {
+            Some(building.coerce()?)
+        } else {
+            None
+        })
     }
 }
 
+impl Room {
+    pub fn get_department(&self) -> Result<Option<Department>, Error> {
+        Ok(if let Some(department) = &self.department {
+            Some(department.coerce()?)
+        } else {
+            None
+        })
+    }
+}
 
 impl Course {
     pub fn get_department(&self) -> Result<Option<Department>, Error> {
@@ -430,7 +468,7 @@ impl ClassShift {
 }
 
 impl ClassShiftInstance {
-    pub fn get_room(&self) -> Result<Option<Room>, Error> {
+    pub fn get_place(&self) -> Result<Option<Place>, Error> {
         Ok(if let Some(room_ref) = &self.room {
             Some(room_ref.coerce()?)
         } else {

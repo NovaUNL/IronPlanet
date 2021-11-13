@@ -9,3 +9,5 @@ pub type ClassInstanceKey = u32;
 pub type ShiftKey = u32;
 pub type EnrollmentKey = u32;
 pub type FileKey = u32;
+pub type PlaceKey = u32;
+pub type PlaceFeatureKey = u32;

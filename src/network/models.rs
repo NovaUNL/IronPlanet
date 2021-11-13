@@ -1,7 +1,46 @@
-use serde::Deserialize;
-use serde_repr::Deserialize_repr;
 use crate::keys::*;
 use crate::ShiftKey;
+use serde::{Deserialize, Serialize};
+use serde_repr::Deserialize_repr;
+
+#[derive(Serialize)]
+pub(crate) struct BasicAuthCredentials {
+    username: String,
+    password: String,
+    machine_uuid: Option<String>,
+}
+
+impl BasicAuthCredentials {
+    pub(crate) fn new(
+        username: String,
+        password: String,
+        machine_uuid: Option<String>,
+    ) -> BasicAuthCredentials {
+        BasicAuthCredentials {
+            username,
+            password,
+            machine_uuid,
+        }
+    }
+}
+
+pub type AuthToken = String;
+
+#[derive(Serialize)]
+pub(crate) struct TokenCredentials {
+    token: AuthToken,
+}
+
+impl TokenCredentials {
+    pub(crate) fn new(token: AuthToken) -> TokenCredentials {
+        TokenCredentials { token }
+    }
+}
+
+#[derive(Deserialize)]
+pub(crate) struct TokenResult {
+    pub(crate) token: AuthToken,
+}
 
 #[derive(Deserialize_repr, Debug, PartialEq, Copy, Clone)]
 #[repr(u8)]
@@ -123,6 +162,19 @@ pub(crate) enum EventType {
     Talk = 10,
 }
 
+#[derive(Deserialize_repr, Debug, PartialEq, Copy, Clone)]
+#[repr(u8)]
+pub(crate) enum RoomType {
+    Generic = 1,
+    Classroom = 2,
+    Auditorium = 3,
+    Laboratory = 4,
+    Computer = 5,
+    Meeting = 6,
+    Masters = 7,
+    Cabinet = 8,
+}
+
 #[derive(Deserialize, Debug, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub(crate) struct Department {
@@ -154,15 +206,42 @@ pub(crate) struct Building {
     pub(crate) id: BuildingKey,
     pub(crate) name: String,
     pub(crate) abbreviation: String,
-    pub(crate) rooms: Vec<RoomKey>,
+    pub(crate) places: Vec<RoomKey>,
+}
+
+#[derive(Deserialize, Debug, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub(crate) struct Place {
+    pub(crate) id: PlaceKey,
+    pub(crate) name: String,
+    pub(crate) floor: i8,
+    pub(crate) building: Option<BuildingKey>,
+    pub(crate) picture: Option<String>,
+    pub(crate) picture_cover: Option<String>,
+    pub(crate) features: Vec<PlaceFeature>,
+    pub(crate) room_meta: Option<Room>,
+}
+
+#[derive(Deserialize, Debug, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub(crate) struct PlaceFeature {
+    pub(crate) id: u32,
+    pub(crate) name: String,
+    pub(crate) description: String,
+    pub(crate) icon: Option<String>,
 }
 
 #[derive(Deserialize, Debug, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub(crate) struct Room {
-    pub(crate) id: RoomKey,
-    pub(crate) name: String,
-    pub(crate) building: BuildingKey,
+    // pub(crate) name: String,
+    pub(crate) department: Option<DepartmentKey>,
+    pub(crate) capacity: Option<u16>,
+    pub(crate) door_number: Option<u16>,
+    #[serde(rename = "type")]
+    pub(crate) room_type: RoomType,
+    pub(crate) description: Option<String>,
+    pub(crate) equipment: Option<String>,
 }
 
 #[derive(Deserialize, Debug, PartialEq)]
@@ -282,7 +361,6 @@ pub(crate) struct File {
     pub(crate) url: String,
 }
 
-
 #[derive(Deserialize, Debug, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub(crate) struct Student {
@@ -316,7 +394,6 @@ pub(crate) struct Teacher {
     pub(crate) shifts: Vec<DepartmentKey>,
     pub(crate) url: String,
 }
-
 
 #[derive(Deserialize, Debug, PartialEq)]
 #[serde(rename_all = "snake_case")]

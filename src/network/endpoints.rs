@@ -1,14 +1,16 @@
-use std::fmt;
 use crate::keys::*;
+use std::fmt;
 
 const UPSTREAM: &str = "https://supernova.nunl.pt/";
 
 pub enum Endpoint {
+    Login,
     TokenValidation,
     Buildings,
     Building(BuildingKey),
-    Rooms,
-    Room(RoomKey),
+    // Rooms,
+    Places,
+    Place(RoomKey),
     Departments,
     Department(DepartmentKey),
     Courses,
@@ -37,7 +39,7 @@ impl fmt::Display for Endpoint {
         match self {
             Endpoint::Buildings => f.write_str("buildings"),
             Endpoint::Building(id) => f.write_fmt(format_args!("building/{}", id)),
-            Endpoint::Room(id) => f.write_fmt(format_args!("room/{}", id)),
+            Endpoint::Place(id) => f.write_fmt(format_args!("place/{}", id)),
             Endpoint::Departments => f.write_str("departments"),
             Endpoint::Department(id) => f.write_fmt(format_args!("department/{}", id)),
             Endpoint::Courses => f.write_str("courses"),

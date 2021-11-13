@@ -11,7 +11,7 @@ pub(crate) trait CoersibleEntity<I> {
 }
 
 
-/// A lazily loaded reference to a `CoersibleEntity`
+/// A lazily loaded reference to a `CoercibleEntity`
 pub(crate) struct ObjRef<T: CoersibleEntity<I>, I> {
     identifier: I,
     _type: PhantomData<T>,
@@ -58,14 +58,14 @@ impl CoersibleEntity<BuildingKey> for Building {
 
 impl ObjRef<Building, BuildingKey> {}
 
-impl CoersibleEntity<RoomKey> for Room {
-    fn coerce(id: &RoomKey, client: Arc<NetworkClient>) -> Result<Self, Error> {
+impl CoersibleEntity<PlaceKey> for Place {
+    fn coerce(id: &PlaceKey, client: Arc<NetworkClient>) -> Result<Self, Error> {
         let client_ref = client.clone();
-        client.fetch_room(*id, client_ref)
+        client.fetch_place(*id, client_ref)
     }
 }
 
-impl ObjRef<Room, RoomKey> {}
+impl ObjRef<Place, PlaceKey> {}
 
 impl CoersibleEntity<CourseKey> for Course {
     fn coerce(id: &CourseKey, client: Arc<NetworkClient>) -> Result<Course, Error> {

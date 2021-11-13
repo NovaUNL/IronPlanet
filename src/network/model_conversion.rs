@@ -1,10 +1,11 @@
-use std::sync::Arc;
-use crate::keys::*;
-use crate::{NetworkClient, ShiftKey};
 use crate::coersion::ObjRef;
+use crate::keys::*;
 use crate::models;
 use crate::models::ShiftType;
 use crate::network::models as nmodels;
+use crate::network::models::RoomType;
+use crate::{NetworkClient, ShiftKey};
+use std::sync::Arc;
 
 impl nmodels::Building {
     pub(crate) fn link(&self, client: Arc<NetworkClient>) -> models::Building {
@@ -12,18 +13,49 @@ impl nmodels::Building {
             id: self.id,
             name: self.name.clone(),
             abbreviation: self.abbreviation.clone(),
-            rooms: self.rooms.iter().map(|key| ObjRef::<models::Room, RoomKey>::new(*key, client.clone())).collect(),
+            places: self
+                .places
+                .iter()
+                .map(|key| ObjRef::<models::Place, PlaceKey>::new(*key, client.clone()))
+                .collect(),
         }
     }
 }
 
-
-impl nmodels::Room {
-    pub(crate) fn link(&self, client: Arc<NetworkClient>) -> models::Room {
-        models::Room {
+impl nmodels::Place {
+    pub(crate) fn link(&self, client: Arc<NetworkClient>) -> models::Place {
+        models::Place {
             id: self.id,
             name: self.name.clone(),
-            building: ObjRef::<models::Building, BuildingKey>::new(self.id, client),
+            floor: 0,
+            building: if let Some(building_ref) = self.building {
+                Some(ObjRef::<models::Building, BuildingKey>::new(
+                    building_ref,
+                    client.clone(),
+                ))
+            } else {
+                None
+            },
+            picture: None,
+            picture_cover: None,
+            variant: if let Some(meta) = &self.room_meta {
+                models::PlaceVariant::Room(models::Room {
+                    department: if let Some(ndept) = meta.department {
+                        Some(ObjRef::<models::Department, DepartmentKey>::new(
+                            ndept, client,
+                        ))
+                    } else {
+                        None
+                    },
+                    capacity: meta.capacity.clone(),
+                    door_number: meta.door_number.clone(),
+                    room_type: models::RoomType::from(meta.room_type),
+                    description: meta.description.clone(),
+                    equipment: meta.equipment.clone(),
+                })
+            } else {
+                models::PlaceVariant::Generic
+            },
         }
     }
 }
@@ -34,7 +66,11 @@ impl nmodels::Department {
             id: self.id,
             name: self.name.clone(),
             description: self.description.clone(),
-            courses: self.courses.iter().map(|key| ObjRef::<models::Course, CourseKey>::new(*key, client.clone())).collect(),
+            courses: self
+                .courses
+                .iter()
+                .map(|key| ObjRef::<models::Course, CourseKey>::new(*key, client.clone()))
+                .collect(),
             building: if let Some(key) = self.building {
                 Some(ObjRef::<models::Building, BuildingKey>::new(key, client))
             } else {
@@ -68,15 +104,23 @@ impl nmodels::Class {
             abbreviation: self.abbreviation.clone(),
             credits: self.credits,
             department: if let Some(key) = self.department {
-                Some(ObjRef::<models::Department, DepartmentKey>::new(key, client.clone()))
+                Some(ObjRef::<models::Department, DepartmentKey>::new(
+                    key,
+                    client.clone(),
+                ))
             } else {
                 None
             },
-            instances: self.instances.iter().map(|key| ObjRef::<models::ClassInstance, ClassInstanceKey>::new(*key, client.clone())).collect(),
+            instances: self
+                .instances
+                .iter()
+                .map(|key| {
+                    ObjRef::<models::ClassInstance, ClassInstanceKey>::new(*key, client.clone())
+                })
+                .collect(),
         }
     }
 }
-
 
 impl nmodels::ClassInstance {
     pub(crate) fn link(&self, client: Arc<NetworkClient>) -> models::ClassInstance {
@@ -84,13 +128,27 @@ impl nmodels::ClassInstance {
             id: self.id,
             year: self.year,
             period: models::Period::from(self.period),
-            students: self.students.iter().map(|key| ObjRef::<models::Student, StudentKey>::new(*key, client.clone())).collect(),
-            teachers: self.teachers.iter().map(|key| ObjRef::<models::Teacher, TeacherKey>::new(*key, client.clone())).collect(),
+            students: self
+                .students
+                .iter()
+                .map(|key| ObjRef::<models::Student, StudentKey>::new(*key, client.clone()))
+                .collect(),
+            teachers: self
+                .teachers
+                .iter()
+                .map(|key| ObjRef::<models::Teacher, TeacherKey>::new(*key, client.clone()))
+                .collect(),
             information: self.information.upstream.clone(),
             avg_grade: self.avg_grade.clone(),
-            shifts: self.shifts.iter().map(|key| ObjRef::<models::ClassShift, ShiftKey>::new(*key, client.clone())).collect(),
+            shifts: self
+                .shifts
+                .iter()
+                .map(|key| ObjRef::<models::ClassShift, ShiftKey>::new(*key, client.clone()))
+                .collect(),
             department: if let Some(key) = self.department {
-                Some(ObjRef::<models::Department, DepartmentKey>::new(key, client))
+                Some(ObjRef::<models::Department, DepartmentKey>::new(
+                    key, client,
+                ))
             } else {
                 None
             },
@@ -105,8 +163,16 @@ impl nmodels::Student {
             name: self.name.clone(),
             abbreviation: self.abbreviation.clone(),
             number: self.number,
-            enrollments: self.enrollments.iter().map(|key| ObjRef::<models::Enrollment, EnrollmentKey>::new(*key, client.clone())).collect(),
-            shifts: self.shifts.iter().map(|key| ObjRef::<models::ClassShift, ShiftKey>::new(*key, client.clone())).collect(),
+            enrollments: self
+                .enrollments
+                .iter()
+                .map(|key| ObjRef::<models::Enrollment, EnrollmentKey>::new(*key, client.clone()))
+                .collect(),
+            shifts: self
+                .shifts
+                .iter()
+                .map(|key| ObjRef::<models::ClassShift, ShiftKey>::new(*key, client.clone()))
+                .collect(),
             first_year: self.first_year,
             last_year: self.last_year,
             course: if let Some(key) = self.course {
@@ -132,8 +198,16 @@ impl nmodels::Teacher {
             email: self.email.clone(),
             thumb: self.thumb.clone(),
             rank: self.rank.clone(),
-            departments: self.departments.iter().map(|key| ObjRef::<models::Department, DepartmentKey>::new(*key, client.clone())).collect(),
-            shifts: self.shifts.iter().map(|key| ObjRef::<models::ClassShift, ShiftKey>::new(*key, client.clone())).collect(),
+            departments: self
+                .departments
+                .iter()
+                .map(|key| ObjRef::<models::Department, DepartmentKey>::new(*key, client.clone()))
+                .collect(),
+            shifts: self
+                .shifts
+                .iter()
+                .map(|key| ObjRef::<models::ClassShift, ShiftKey>::new(*key, client.clone()))
+                .collect(),
             url: self.url.clone(),
         }
     }
@@ -143,7 +217,10 @@ impl nmodels::Enrollment {
     pub(crate) fn link(&self, client: Arc<NetworkClient>) -> models::Enrollment {
         models::Enrollment {
             id: self.id,
-            class_instance: ObjRef::<models::ClassInstance, ClassInstanceKey>::new(self.class_instance, client.clone()),
+            class_instance: ObjRef::<models::ClassInstance, ClassInstanceKey>::new(
+                self.class_instance,
+                client.clone(),
+            ),
             student: ObjRef::<models::Student, StudentKey>::new(self.student, client),
             attendance: self.attendance,
             attendance_date: self.attendance_date.clone(),
@@ -167,12 +244,19 @@ impl nmodels::ClassShift {
             id: self.id,
             number: self.number,
             shift_type: ShiftType::from(self.shift_type),
-            teachers: self.teachers.iter().map(|key| ObjRef::<models::Teacher, TeacherKey>::new(*key, client.clone())).collect(),
-            instances: self.instances.iter().map(|shift_inst| shift_inst.to_model(client.clone())).collect(),
+            teachers: self
+                .teachers
+                .iter()
+                .map(|key| ObjRef::<models::Teacher, TeacherKey>::new(*key, client.clone()))
+                .collect(),
+            instances: self
+                .instances
+                .iter()
+                .map(|shift_inst| shift_inst.to_model(client.clone()))
+                .collect(),
         }
     }
 }
-
 
 impl From<nmodels::Degree> for models::Degree {
     fn from(degree: nmodels::Degree) -> Self {
@@ -187,7 +271,6 @@ impl From<nmodels::Degree> for models::Degree {
         }
     }
 }
-
 
 impl From<nmodels::Period> for models::Period {
     fn from(period: nmodels::Period) -> Self {
@@ -217,6 +300,21 @@ impl From<nmodels::Weekday> for models::Weekday {
     }
 }
 
+impl From<nmodels::RoomType> for models::RoomType {
+    fn from(room_type: nmodels::RoomType) -> Self {
+        match room_type {
+            nmodels::RoomType::Generic => models::RoomType::Generic,
+            RoomType::Classroom => models::RoomType::Classroom,
+            RoomType::Auditorium => models::RoomType::Auditorium,
+            RoomType::Laboratory => models::RoomType::Laboratory,
+            RoomType::Computer => models::RoomType::Computer,
+            RoomType::Meeting => models::RoomType::Meeting,
+            RoomType::Masters => models::RoomType::Masters,
+            RoomType::Cabinet => models::RoomType::Cabinet,
+        }
+    }
+}
+
 impl From<nmodels::ShiftType> for models::ShiftType {
     fn from(shift_type: nmodels::ShiftType) -> Self {
         match shift_type {
@@ -228,11 +326,12 @@ impl From<nmodels::ShiftType> for models::ShiftType {
             nmodels::ShiftType::FieldWork => models::ShiftType::FieldWork,
             nmodels::ShiftType::OnlineTheoretical => models::ShiftType::OnlineTheoretical,
             nmodels::ShiftType::OnlinePractical => models::ShiftType::OnlinePractical,
-            nmodels::ShiftType::OnlinePracticalTheoretical => models::ShiftType::OnlinePracticalTheoretical,
+            nmodels::ShiftType::OnlinePracticalTheoretical => {
+                models::ShiftType::OnlinePracticalTheoretical
+            }
         }
     }
 }
-
 
 // impl nmodels::ClassShift {
 //     fn to_model(&self, client: Arc<NetworkClient>) -> models::ClassShift {
@@ -246,7 +345,6 @@ impl From<nmodels::ShiftType> for models::ShiftType {
 //     }
 // }
 
-
 impl nmodels::ClassShiftInstance {
     fn to_model(&self, client: Arc<NetworkClient>) -> models::ClassShiftInstance {
         models::ClassShiftInstance {
@@ -254,7 +352,7 @@ impl nmodels::ClassShiftInstance {
             start: self.start,
             duration: self.duration,
             room: if let Some(key) = self.room {
-                Some(ObjRef::<models::Room, RoomKey>::new(key, client))
+                Some(ObjRef::<models::Place, PlaceKey>::new(key, client))
             } else {
                 None
             },
