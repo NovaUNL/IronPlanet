@@ -4,7 +4,7 @@ use crate::errors::Error;
 use crate::keys::*;
 pub use crate::network::models::{ClassInfo, ClassInfoEntry, ClassInfoSources};
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Weekday {
     Monday,
     Thursday,
@@ -15,7 +15,7 @@ pub enum Weekday {
     Sunday,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Period {
     Year,
     FirstSemester,
@@ -26,7 +26,7 @@ pub enum Period {
     FourthTrimester,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Degree {
     BSc,
     MSc,
@@ -37,7 +37,7 @@ pub enum Degree {
     PreGraduation,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum ShiftType {
     Theoretical,
     Practical,
@@ -50,7 +50,7 @@ pub enum ShiftType {
     OnlinePracticalTheoretical,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum FileCategory {
     Image,
     Slides,
@@ -63,7 +63,7 @@ pub enum FileCategory {
     Others,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum FileLicense {
     RightsReserved,
     PublicDomain,
@@ -77,7 +77,7 @@ pub enum FileLicense {
     GenericPermissive,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum FileVisibility {
     Public,
     Students,
@@ -85,14 +85,14 @@ pub enum FileVisibility {
     Nobody,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Season {
     Normal,
     Exam,
     Special,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum EventType {
     Test,
     Exam,
@@ -106,7 +106,7 @@ pub enum EventType {
     Talk,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum RoomType {
     Generic,
     Classroom,
@@ -118,6 +118,7 @@ pub enum RoomType {
     Cabinet,
 }
 
+#[derive(Debug, Clone)]
 pub struct Department {
     pub id: u32,
     pub name: String,
@@ -126,6 +127,7 @@ pub struct Department {
     pub(crate) building: Option<ObjRef<Building, BuildingKey>>,
 }
 
+#[derive(Debug, Clone)]
 pub struct Building {
     pub id: u32,
     pub name: String,
@@ -133,6 +135,7 @@ pub struct Building {
     pub(crate) places: Vec<ObjRef<Place, PlaceKey>>,
 }
 
+#[derive(Debug, Clone)]
 pub struct Place {
     pub id: PlaceKey,
     pub variant: PlaceVariant,
@@ -143,11 +146,13 @@ pub struct Place {
     pub picture_cover: Option<String>,
 }
 
+#[derive(Debug, Clone)]
 pub enum PlaceVariant {
     Generic,
     Room(Room),
 }
 
+#[derive(Debug, Clone)]
 pub struct Room {
     pub(crate) department: Option<ObjRef<Department, DepartmentKey>>,
     pub capacity: Option<u16>,
@@ -157,6 +162,7 @@ pub struct Room {
     pub equipment: Option<String>,
 }
 
+#[derive(Debug, Clone)]
 pub struct Course {
     pub id: u32,
     pub abbreviation: String,
@@ -165,6 +171,7 @@ pub struct Course {
     pub(crate) department: Option<ObjRef<Department, DepartmentKey>>,
 }
 
+#[derive(Debug, Clone)]
 pub struct Class {
     pub id: u32,
     pub name: String,
@@ -174,6 +181,7 @@ pub struct Class {
     pub(crate) instances: Vec<ObjRef<ClassInstance, ClassInstanceKey>>,
 }
 
+#[derive(Debug, Clone)]
 pub struct ClassInstance {
     pub id: u32,
     pub year: u32,
@@ -207,6 +215,7 @@ pub struct ClassInstance {
 //     pub editor: Option<String>,
 // }
 
+#[derive(Debug, Clone)]
 pub struct ClassShift {
     pub id: u32,
     pub number: u16,
@@ -215,6 +224,7 @@ pub struct ClassShift {
     pub instances: Vec<ClassShiftInstance>,
 }
 
+#[derive(Debug, Clone)]
 pub struct ClassShiftInstance {
     pub weekday: Weekday,
     pub start: u16,
@@ -222,12 +232,14 @@ pub struct ClassShiftInstance {
     pub(crate) room: Option<ObjRef<Place, PlaceKey>>,
 }
 
+#[derive(Debug, Clone)]
 pub struct ClassInstanceFiles {
     pub official: Vec<ClassInstanceFile>,
     pub community: Vec<ClassInstanceFile>,
     // pub  denied: Vec<ClassInstanceFile>,
 }
 
+#[derive(Debug, Clone)]
 pub struct ClassInstanceFile {
     pub id: u32,
     pub file: File,
@@ -239,6 +251,7 @@ pub struct ClassInstanceFile {
     pub url: String,
 }
 
+#[derive(Debug, Clone)]
 pub struct File {
     pub hash: String,
     pub size: u32,
@@ -247,6 +260,7 @@ pub struct File {
     pub url: String,
 }
 
+#[derive(Debug, Clone)]
 pub struct Student {
     pub id: StudentKey,
     pub name: String,
@@ -261,6 +275,7 @@ pub struct Student {
     pub url: String,
 }
 
+#[derive(Debug, Clone)]
 pub struct Teacher {
     pub id: u32,
     pub name: String,
@@ -276,6 +291,7 @@ pub struct Teacher {
     pub url: String,
 }
 
+#[derive(Debug, Clone)]
 pub struct Enrollment {
     pub id: EnrollmentKey,
     pub(crate) class_instance: ObjRef<ClassInstance, ClassInstanceKey>,

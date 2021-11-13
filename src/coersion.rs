@@ -1,17 +1,20 @@
-use std::marker::PhantomData;
-use std::sync::Arc;
-use crate::Supernova;
 use crate::errors::Error;
 use crate::keys::*;
 use crate::models::*;
+use crate::Supernova;
+use std::fmt;
+use std::marker::PhantomData;
+use std::sync::Arc;
 
 /// Something that can be obtained from feeding a reference to a client
 pub(crate) trait CoersibleEntity<I> {
-    fn coerce(id: &I, client: Arc<Supernova>) -> Result<Self, Error> where Self: Sized;
+    fn coerce(id: &I, client: Arc<Supernova>) -> Result<Self, Error>
+    where
+        Self: Sized;
 }
 
-
 /// A lazily loaded reference to a `CoercibleEntity`
+#[derive(Clone)]
 pub(crate) struct ObjRef<T: CoersibleEntity<I>, I> {
     identifier: I,
     _type: PhantomData<T>,
@@ -19,7 +22,7 @@ pub(crate) struct ObjRef<T: CoersibleEntity<I>, I> {
     client: Arc<Supernova>,
 }
 
-impl<T: CoersibleEntity<I>, I> ObjRef<T, I> {
+impl<T: CoersibleEntity<I>, I: fmt::Debug> ObjRef<T, I> {
     pub(crate) fn new(identifier: I, client: Arc<Supernova>) -> ObjRef<T, I> {
         ObjRef {
             identifier,
@@ -35,6 +38,11 @@ impl<T: CoersibleEntity<I>, I> ObjRef<T, I> {
     }
 }
 
+impl<T: CoersibleEntity<I>, I: fmt::Debug> fmt::Debug for ObjRef<T, I> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_fmt(format_args!("ObjRef<{:?}>", self.identifier))
+    }
+}
 
 /// #############################################################
 ///  Implementations (Lots and lots of copy-paste)
@@ -101,7 +109,6 @@ impl CoersibleEntity<TeacherKey> for Teacher {
         client.get_teacher(*id)
     }
 }
-
 
 impl ObjRef<Teacher, TeacherKey> {}
 
