@@ -7,19 +7,28 @@ use serde_repr::Deserialize_repr;
 pub(crate) struct BasicAuthCredentials<'a> {
     username: &'a str,
     password: &'a str,
-    machine_uuid: Option<String>,
+    client_meta: Option<ClientMeta>,
+}
+
+#[derive(Serialize)]
+pub(crate) struct ClientMeta {
+    pub(crate) system: Option<String>,
+    pub(crate) hostname: Option<String>,
+    pub(crate) release: Option<String>,
+    pub(crate) version: Option<String>,
+    pub(crate) client: Option<String>,
 }
 
 impl<'a> BasicAuthCredentials<'_> {
     pub(crate) fn new(
         username: &'a str,
         password: &'a str,
-        machine_uuid: Option<String>,
+        client_meta: Option<ClientMeta>,
     ) -> BasicAuthCredentials<'a> {
         BasicAuthCredentials {
             username,
             password,
-            machine_uuid,
+            client_meta,
         }
     }
 }

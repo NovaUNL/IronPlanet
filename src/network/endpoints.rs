@@ -14,7 +14,7 @@ lazy_static! {
     static ref UPSTREAM: String = {
         let default = "https://supernova.nunl.pt";
         // Allowing this override in release builds would allow token hijacking
-        if !cfg!(debug_assertions){
+        if cfg!(debug_assertions){
             if let Ok(url) = env::var("SUPERNOVA_UPSTREAM") {
                 url
             } else {

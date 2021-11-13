@@ -4,6 +4,8 @@ use crate::network::cache::ClientCache;
 use crate::network::endpoints::{AuthenticatedSupernova, BaseSupernova};
 use crate::network::http::HTTPClient;
 use crate::network::models::{self as nmodels, AuthToken};
+use crate::nmodels::ClientMeta;
+use crate::utils::get_client_meta;
 use std::sync::{Arc, RwLock};
 
 pub(crate) mod coersion;
@@ -11,6 +13,7 @@ mod errors;
 pub mod keys;
 pub mod models;
 mod network;
+mod utils;
 
 #[derive(Default)]
 pub struct Supernova {
@@ -26,7 +29,7 @@ impl Supernova {
     }
 
     pub fn login(&self, username: &str, password: &str) -> Result<AuthToken, Error> {
-        let creds = nmodels::BasicAuthCredentials::new(username, password, None);
+        let creds = nmodels::BasicAuthCredentials::new(username, password, get_client_meta());
         let token = self.base.login(&self.http_client, creds)?;
         self.authenticated.set_token(token.token.clone());
         Ok(token.token)
