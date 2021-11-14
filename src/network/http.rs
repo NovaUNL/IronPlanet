@@ -6,17 +6,18 @@ use ureq::{ErrorKind, SerdeValue};
 pub(crate) struct HTTPClient;
 
 impl HTTPClient {
+    #[allow(clippy::unused_self)]
     pub(crate) fn send(&self, req: Request) -> Result<String, Error> {
         let mut request = match req.method {
-            Method::GET => ureq::get(&req.url),
-            Method::POST => ureq::post(&req.url),
-            Method::PUT => ureq::put(&req.url),
-            Method::DELETE => ureq::delete(&req.url),
+            Method::Get => ureq::get(&req.url),
+            Method::Post => ureq::post(&req.url),
+            Method::Put => ureq::put(&req.url),
+            Method::Delete => ureq::delete(&req.url),
         };
 
         request = request.set("iron_planet", env!("CARGO_PKG_VERSION"));
 
-        for (k, v) in req.headers.iter() {
+        for (k, v) in &req.headers {
             request = request.set(k, v);
         }
 
@@ -26,23 +27,26 @@ impl HTTPClient {
             request.call()
         }
         .map_err(|e| match e.kind() {
-            ErrorKind::InvalidUrl | ErrorKind::UnknownScheme | ErrorKind::Io => Error::ClientError,
-            ErrorKind::ConnectionFailed | ErrorKind::TooManyRedirects => Error::ServerError,
+            ErrorKind::InvalidUrl | ErrorKind::UnknownScheme | ErrorKind::Io | ErrorKind::HTTP => {
+                Error::Client
+            }
+            ErrorKind::ConnectionFailed
+            | ErrorKind::TooManyRedirects
+            | ErrorKind::BadStatus
+            | ErrorKind::BadHeader => Error::Server,
             ErrorKind::Dns
             | ErrorKind::InvalidProxyUrl
             | ErrorKind::ProxyConnect
-            | ErrorKind::ProxyUnauthorized => Error::NetworkError,
-            ErrorKind::HTTP => Error::ClientError,
-            _ => Error::ServerError,
+            | ErrorKind::ProxyUnauthorized => Error::Network,
         })?;
 
         let code = response.status();
 
         match code {
-            100..=399 => Ok(response.into_string().map_err(|_| Error::DecodeError)?),
-            400..=499 => Err(Error::ResourceMissingError),
-            500..=699 => Err(Error::ServerError),
-            _ => Err(Error::NamelessError),
+            100..=399 => Ok(response.into_string().map_err(|_| Error::Decode)?),
+            400..=499 => Err(Error::ResourceMissing),
+            500..=699 => Err(Error::Server),
+            _ => Err(Error::Generic),
         }
     }
 }
@@ -59,7 +63,7 @@ impl<'a> RequestBuilder<'a> {
         RequestBuilder {
             url,
             headers: HashMap::default(),
-            method: Method::GET,
+            method: Method::Get,
             body: None,
         }
     }
@@ -81,7 +85,7 @@ impl<'a> RequestBuilder<'a> {
 
     pub(crate) fn build(&self) -> Request {
         Request {
-            url: self.url.to_string().clone(),
+            url: self.url.to_string(),
             headers: self.headers.clone(),
             method: self.method,
             body: self.body.clone(),
@@ -99,10 +103,10 @@ pub(crate) struct Request {
 #[derive(Copy, Clone)]
 #[allow(dead_code)]
 pub(crate) enum Method {
-    GET,
-    POST,
-    PUT,
-    DELETE,
+    Get,
+    Post,
+    Put,
+    Delete,
 }
 
 // pub(crate) type Headers = HashMap<String, String>;

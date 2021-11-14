@@ -1,3 +1,16 @@
+#![deny(
+    nonstandard_style,
+    warnings,
+    unused,
+    future_incompatible,
+    clippy::all,
+    clippy::pedantic
+)]
+#![allow(clippy::implicit_hasher)]
+#![allow(clippy::missing_errors_doc)]
+#![allow(clippy::missing_panics_doc)]
+#![allow(clippy::wildcard_imports)]
+
 use crate::errors::Error;
 use crate::keys::*;
 use crate::network::cache::ClientCache;
@@ -29,13 +42,14 @@ pub struct RequestConfig {
 }
 
 impl Supernova {
+    #[must_use]
     pub fn new() -> Arc<Supernova> {
         Arc::new(Supernova::default())
     }
 
     pub fn login(&self, username: &str, password: &str) -> Result<AuthToken, Error> {
-        let creds = nmodels::BasicAuthCredentials::new(username, password, get_client_meta());
-        let token = self.base.login(&self.http_client, creds)?;
+        let creds = nmodels::BasicAuthCredentials::new(username, password, Some(get_client_meta()));
+        let token = self.base.login(&self.http_client, &creds)?;
         self.authenticated.set_token(token.token.clone());
         Ok(token.token)
     }
@@ -63,18 +77,18 @@ impl Supernova {
                 return Ok(cache
                     .departments
                     .values()
-                    .map(|ndept| ndept.link(self.clone()))
+                    .map(|net_department| net_department.link(self.clone()))
                     .collect::<Vec<models::Department>>());
             }
         } // Drop read lock
 
-        let departments = self.base.fetch_departments(&self.http_client)?;
+        let net_departments = self.base.fetch_departments(&self.http_client)?;
         {
             let mut cache = self.cache.write().unwrap();
             cache.departments_populated = true;
-            departments.into_iter().for_each(|ndept| {
-                cache.departments.insert(ndept.id, ndept);
-            });
+            for net_department in net_departments {
+                cache.departments.insert(net_department.id, net_department);
+            }
         }
         // Change write lock to read lock
         {
@@ -82,7 +96,7 @@ impl Supernova {
             Ok(cache
                 .departments
                 .values()
-                .map(|ndept| ndept.link(self.clone()))
+                .map(|net_department| net_department.link(self.clone()))
                 .collect())
         }
     }
@@ -98,18 +112,18 @@ impl Supernova {
                 return Ok(cache
                     .buildings
                     .values()
-                    .map(|building| building.link(self.clone()))
+                    .map(|building| building.link(&self.clone()))
                     .collect::<Vec<models::Building>>());
             }
         } // Drop read lock
 
-        let buildings = self.base.fetch_buildings(&self.http_client)?;
+        let net_buildings = self.base.fetch_buildings(&self.http_client)?;
         {
             let mut cache = self.cache.write().unwrap();
             cache.buildings_populated = true;
-            buildings.into_iter().for_each(|nbuilding| {
-                cache.buildings.insert(nbuilding.id, nbuilding);
-            });
+            for net_building in net_buildings {
+                cache.buildings.insert(net_building.id, net_building);
+            }
         }
         // Change write lock to read lock
         {
@@ -117,7 +131,7 @@ impl Supernova {
             Ok(cache
                 .buildings
                 .values()
-                .map(|nbuilding| nbuilding.link(self.clone()))
+                .map(|net_building| net_building.link(&self.clone()))
                 .collect())
         }
     }
@@ -133,18 +147,18 @@ impl Supernova {
                 return Ok(cache
                     .places
                     .values()
-                    .map(|places| places.link(self.clone()))
+                    .map(|net_place| net_place.link(self.clone()))
                     .collect::<Vec<models::Place>>());
             }
         }
         // Drop read lock
-        let nplaces = self.base.fetch_places(&self.http_client)?;
+        let net_places = self.base.fetch_places(&self.http_client)?;
         {
             let mut cache = self.cache.write().unwrap();
             cache.places_populated = true;
-            nplaces.into_iter().for_each(|nplace| {
-                cache.places.insert(nplace.id, nplace);
-            });
+            for net_place in net_places {
+                cache.places.insert(net_place.id, net_place);
+            }
         }
         // Change write lock to read lock
         {
@@ -152,7 +166,7 @@ impl Supernova {
             Ok(cache
                 .places
                 .values()
-                .map(|nplace| nplace.link(self.clone()))
+                .map(|net_place| net_place.link(self.clone()))
                 .collect())
         }
     }
@@ -168,18 +182,18 @@ impl Supernova {
                 return Ok(cache
                     .classes
                     .values()
-                    .map(|nclass| nclass.link(self.clone()))
+                    .map(|net_class| net_class.link(&self.clone()))
                     .collect::<Vec<models::Class>>());
             }
         } // Drop read lock
 
-        let classes = self.base.fetch_classes(&self.http_client)?;
+        let net_classes = self.base.fetch_classes(&self.http_client)?;
         {
             let mut cache = self.cache.write().unwrap();
             cache.classes_populated = true;
-            classes.into_iter().for_each(|nclass| {
-                cache.classes.insert(nclass.id, nclass);
-            });
+            for net_class in net_classes {
+                cache.classes.insert(net_class.id, net_class);
+            }
         }
         // Change write lock to read lock
         {
@@ -187,7 +201,7 @@ impl Supernova {
             Ok(cache
                 .classes
                 .values()
-                .map(|nbuilding| nbuilding.link(self.clone()))
+                .map(|net_building| net_building.link(&self.clone()))
                 .collect())
         }
     }
@@ -203,18 +217,18 @@ impl Supernova {
                 return Ok(cache
                     .courses
                     .values()
-                    .map(|ncourse| ncourse.link(self.clone()))
+                    .map(|net_course| net_course.link(self.clone()))
                     .collect::<Vec<models::Course>>());
             }
         } // Drop read lock
 
-        let classes = self.base.fetch_courses(&self.http_client)?;
+        let net_courses = self.base.fetch_courses(&self.http_client)?;
         {
             let mut cache = self.cache.write().unwrap();
             cache.courses_populated = true;
-            classes.into_iter().for_each(|ncourse| {
+            for ncourse in net_courses {
                 cache.courses.insert(ncourse.id, ncourse);
-            });
+            }
         }
         // Change write lock to read lock
         {
@@ -222,7 +236,7 @@ impl Supernova {
             Ok(cache
                 .courses
                 .values()
-                .map(|ncourse| ncourse.link(self.clone()))
+                .map(|net_course| net_course.link(self.clone()))
                 .collect())
         }
     }
@@ -235,15 +249,16 @@ impl Supernova {
         if !conf.evade_cache {
             // Acquire read lock
             let cache = self.cache.read().unwrap();
-            if let Some(nbuilding) = cache.buildings.get(&id) {
-                return Ok(nbuilding.link(self.clone()));
+            if let Some(net_building) = cache.buildings.get(&id) {
+                return Ok(net_building.link(&self.clone()));
             }
         } // Drop read lock
 
-        let nbuilding = self.base.fetch_building(&self.http_client, id)?;
+        let net_building = self.base.fetch_building(&self.http_client, id)?;
+
         let mut cache = self.cache.write().unwrap();
-        let building = nbuilding.link(self.clone());
-        cache.buildings.insert(nbuilding.id, nbuilding);
+        let building = net_building.link(&self.clone());
+        cache.buildings.insert(net_building.id, net_building);
         Ok(building)
     }
 
@@ -255,15 +270,16 @@ impl Supernova {
         if !conf.evade_cache {
             // Acquire read lock
             let cache = self.cache.read().unwrap();
-            if let Some(nplace) = cache.places.get(&id) {
-                return Ok(nplace.link(self.clone()));
+            if let Some(net_place) = cache.places.get(&id) {
+                return Ok(net_place.link(self.clone()));
             }
         } // Drop read lock
 
-        let nplace = self.base.fetch_place(&self.http_client, id)?;
+        let net_place = self.base.fetch_place(&self.http_client, id)?;
+
         let mut cache = self.cache.write().unwrap();
-        let room = nplace.link(self.clone());
-        cache.places.insert(nplace.id, nplace);
+        let room = net_place.link(self.clone());
+        cache.places.insert(net_place.id, net_place);
         Ok(room)
     }
 
@@ -275,15 +291,16 @@ impl Supernova {
         if !conf.evade_cache {
             // Acquire read lock
             let cache = self.cache.read().unwrap();
-            if let Some(ndepartment) = cache.departments.get(&id) {
-                return Ok(ndepartment.link(self.clone()));
+            if let Some(net_department) = cache.departments.get(&id) {
+                return Ok(net_department.link(self.clone()));
             }
         } // Drop read lock
 
-        let ndepartment = self.base.fetch_department(&self.http_client, id)?;
+        let net_department = self.base.fetch_department(&self.http_client, id)?;
+
         let mut cache = self.cache.write().unwrap();
-        let department = ndepartment.link(self.clone());
-        cache.departments.insert(ndepartment.id, ndepartment);
+        let department = net_department.link(self.clone());
+        cache.departments.insert(net_department.id, net_department);
         Ok(department)
     }
 
@@ -295,14 +312,16 @@ impl Supernova {
         if !conf.evade_cache {
             // Acquire read lock
             let cache = self.cache.read().unwrap();
-            if let Some(ncourse) = cache.courses.get(&id) {
-                return Ok(ncourse.link(self.clone()));
+            if let Some(net_course) = cache.courses.get(&id) {
+                return Ok(net_course.link(self.clone()));
             }
         } // Drop read lock
-        let ncourse = self.base.fetch_course(&self.http_client, id)?;
+
+        let net_course = self.base.fetch_course(&self.http_client, id)?;
+
         let mut cache = self.cache.write().unwrap();
-        let course = ncourse.link(self.clone());
-        cache.courses.insert(ncourse.id, ncourse);
+        let course = net_course.link(self.clone());
+        cache.courses.insert(net_course.id, net_course);
         Ok(course)
     }
 
@@ -314,15 +333,16 @@ impl Supernova {
         if !conf.evade_cache {
             // Acquire read lock
             let cache = self.cache.read().unwrap();
-            if let Some(nclass) = cache.classes.get(&id) {
-                return Ok(nclass.link(self.clone()));
+            if let Some(net_class) = cache.classes.get(&id) {
+                return Ok(net_class.link(&self.clone()));
             }
         } // Drop read lock
 
-        let nclass = self.base.fetch_class(&self.http_client, id)?;
+        let net_class = self.base.fetch_class(&self.http_client, id)?;
+
         let mut cache = self.cache.write().unwrap();
-        let klass = nclass.link(self.clone());
-        cache.classes.insert(nclass.id, nclass);
+        let klass = net_class.link(&self.clone());
+        cache.classes.insert(net_class.id, net_class);
         Ok(klass)
     }
 
@@ -334,23 +354,28 @@ impl Supernova {
         if !conf.evade_cache {
             // Acquire read lock
             let cache = self.cache.read().unwrap();
-            if let Some(nclass_inst) = cache.class_instances.get(&id) {
-                return Ok(nclass_inst.link(self.clone()));
+            if let Some(net_class_inst) = cache.class_instances.get(&id) {
+                return Ok(net_class_inst.link(self.clone()));
             }
         } // Drop read lock
-        let nclass_inst = self
+
+        let net_class_inst = self
             .authenticated
             .fetch_class_instance(&self.http_client, id)?;
+
         let mut cache = self.cache.write().unwrap();
-        nclass_inst.enrollments.iter().for_each(|nenrollment| {
-            cache
-                .enrollments
-                .insert(nenrollment.id, nenrollment.clone());
+        net_class_inst
+            .enrollments
+            .iter()
+            .for_each(|net_enrollment| {
+                cache
+                    .enrollments
+                    .insert(net_enrollment.id, net_enrollment.clone());
+            });
+        net_class_inst.shifts.iter().for_each(|net_shift| {
+            cache.class_shifts.insert(net_shift.id, net_shift.clone());
         });
-        nclass_inst.shifts.iter().for_each(|nshift| {
-            cache.class_shifts.insert(nshift.id, nshift.clone());
-        });
-        let class_inst = nclass_inst.link(self.clone());
+        let class_inst = net_class_inst.link(self.clone());
 
         Ok(class_inst)
     }
@@ -363,14 +388,16 @@ impl Supernova {
         if !conf.evade_cache {
             // Acquire read lock
             let cache = self.cache.read().unwrap();
-            if let Some(nstudent) = cache.students.get(&id) {
-                return Ok(nstudent.link(self.clone()));
+            if let Some(net_student) = cache.students.get(&id) {
+                return Ok(net_student.link(self.clone()));
             }
         } // Drop read lock
-        let nstudent = self.authenticated.fetch_student(&self.http_client, id)?;
+
+        let net_student = self.authenticated.fetch_student(&self.http_client, id)?;
+
         let mut cache = self.cache.write().unwrap();
-        let student = nstudent.link(self.clone());
-        cache.students.insert(nstudent.id, nstudent);
+        let student = net_student.link(self.clone());
+        cache.students.insert(net_student.id, net_student);
         Ok(student)
     }
 
@@ -382,15 +409,16 @@ impl Supernova {
         if !conf.evade_cache {
             // Acquire read lock
             let cache = self.cache.read().unwrap();
-            if let Some(nteacher) = cache.teachers.get(&id) {
-                return Ok(nteacher.link(self.clone()));
+            if let Some(net_teacher) = cache.teachers.get(&id) {
+                return Ok(net_teacher.link(&self.clone()));
             }
         } // Drop read lock
 
-        let nteacher = self.authenticated.fetch_teacher(&self.http_client, id)?;
+        let net_teacher = self.authenticated.fetch_teacher(&self.http_client, id)?;
+
         let mut cache = self.cache.write().unwrap();
-        let teacher = nteacher.link(self.clone());
-        cache.teachers.insert(nteacher.id, nteacher);
+        let teacher = net_teacher.link(&self.clone());
+        cache.teachers.insert(net_teacher.id, net_teacher);
         Ok(teacher)
     }
 
@@ -407,10 +435,11 @@ impl Supernova {
             }
         } // Drop read lock
 
-        let nenrollment = self.authenticated.fetch_enrollment(&self.http_client, id)?;
+        let net_enrollment = self.authenticated.fetch_enrollment(&self.http_client, id)?;
+
         let mut cache = self.cache.write().unwrap();
-        let enrollment = nenrollment.link(self.clone());
-        cache.enrollments.insert(nenrollment.id, nenrollment);
+        let enrollment = net_enrollment.link(self.clone());
+        cache.enrollments.insert(net_enrollment.id, net_enrollment);
         Ok(enrollment)
     }
 
@@ -422,15 +451,16 @@ impl Supernova {
         if !conf.evade_cache {
             // Acquire read lock
             let cache = self.cache.read().unwrap();
-            if let Some(nshift) = cache.class_shifts.get(&id) {
-                return Ok(nshift.link(self.clone()));
+            if let Some(net_shift) = cache.class_shifts.get(&id) {
+                return Ok(net_shift.link(&self.clone()));
             }
         } // Drop read lock
 
-        let nshift = self.authenticated.fetch_shift(&self.http_client, id)?;
+        let net_shift = self.authenticated.fetch_shift(&self.http_client, id)?;
+
         let mut cache = self.cache.write().unwrap();
-        let shift = nshift.link(self.clone());
-        cache.class_shifts.insert(nshift.id, nshift);
+        let shift = net_shift.link(&self.clone());
+        cache.class_shifts.insert(net_shift.id, net_shift);
         Ok(shift)
     }
 

@@ -93,30 +93,33 @@ impl fmt::Display for Endpoint {
 pub(crate) struct BaseSupernova {}
 
 impl BaseSupernova {
+    #[allow(clippy::unused_self)]
     fn generic_fetch<T: DeserializeOwned>(&self, http: &HTTPClient, url: &str) -> Result<T, Error> {
         let request = RequestBuilder::new(url).build();
         let json_str = http.send(request)?;
 
-        Ok(serde_json::from_str(&json_str).map_err(|_| Error::ParsingError)?)
+        serde_json::from_str(&json_str).map_err(|_| Error::Parsing)
     }
 
+    #[allow(clippy::unused_self)]
     pub(crate) fn login(
         &self,
         http: &HTTPClient,
-        credentials: nmodels::BasicAuthCredentials,
+        credentials: &nmodels::BasicAuthCredentials,
     ) -> Result<nmodels::TokenResult, Error> {
         let request = RequestBuilder::new(&Endpoint::Login.to_string())
-            .set_method(Method::POST)
+            .set_method(Method::Post)
             .set_body(serde_json::json!(credentials))
             .build();
         let json_str = http.send(request)?;
 
-        Ok(serde_json::from_str(&json_str).map_err(|_| Error::ParsingError)?)
+        serde_json::from_str(&json_str).map_err(|_| Error::Parsing)
     }
 
+    #[allow(clippy::unused_self)]
     pub(crate) fn verify(&self, http: &HTTPClient, token: AuthToken) -> Result<(), Error> {
         let request = RequestBuilder::new(&Endpoint::TokenValidation.to_string())
-            .set_method(Method::GET)
+            .set_method(Method::Get)
             .add_header("Authorization".to_string(), format!("Token {}", token))
             .set_body(serde_json::json!(nmodels::TokenCredentials::new(token)))
             .build();
@@ -227,14 +230,14 @@ impl AuthenticatedSupernova {
                 )
                 .build()
         } else {
-            return Err(Error::MissingAuthenticationError);
+            return Err(Error::MissingAuthentication);
         };
 
         let json_str = http.send(request)?;
-        Ok(serde_json::from_str(&json_str).map_err(|e| {
+        serde_json::from_str(&json_str).map_err(|e| {
             dbg!(e);
-            Error::ParsingError
-        })?)
+            Error::Parsing
+        })
     }
 
     pub(crate) fn logout(&self, http: &HTTPClient) -> Result<nmodels::TokenResult, Error> {
@@ -245,14 +248,14 @@ impl AuthenticatedSupernova {
                     "Authorization".to_string(),
                     format!("Token {}", credentials),
                 )
-                .set_method(Method::DELETE)
+                .set_method(Method::Delete)
                 .build()
         } else {
-            return Err(Error::MissingAuthenticationError);
+            return Err(Error::MissingAuthentication);
         };
         let json_str = http.send(request)?;
 
-        Ok(serde_json::from_str(&json_str).map_err(|_| Error::ParsingError)?)
+        serde_json::from_str(&json_str).map_err(|_| Error::Parsing)
     }
 
     pub(crate) fn fetch_class_instance(

@@ -26,7 +26,7 @@ impl<T: CoersibleEntity<I>, I: fmt::Debug> ObjRef<T, I> {
     pub(crate) fn new(identifier: I, client: Arc<Supernova>) -> ObjRef<T, I> {
         ObjRef {
             identifier,
-            _type: Default::default(),
+            _type: std::marker::PhantomData::default(),
             client,
         }
     }

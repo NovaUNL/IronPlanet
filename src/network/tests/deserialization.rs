@@ -1,4 +1,9 @@
-use crate::network::models::{Building, BuildingPartial, Class, File, ClassInfo, ClassInfoEntry, ClassInfoSources, ClassInstance, ClassShift, ClassInstanceFile, ClassInstanceFiles, ClassShiftInstance, CoursePartial, Degree, Department, DepartmentPartial, PartialClassInstance, Period, ShiftType, Weekday, FileCategory};
+use crate::network::models::{
+    Building, BuildingPartial, Class, ClassInfo, ClassInfoEntry, ClassInfoSources, ClassInstance,
+    ClassInstanceFile, ClassInstanceFiles, ClassShift, ClassShiftInstance, CoursePartial, Degree,
+    Department, DepartmentPartial, File, FileCategory, PartialClassInstance, Period, ShiftType,
+    Weekday,
+};
 use std::collections::HashMap;
 
 #[test]
@@ -544,27 +549,24 @@ fn ok_class_instance_files() {
     assert_eq!(
         parsed,
         ClassInstanceFiles {
-            official: vec![
-                ClassInstanceFile {
-                    id: 214498,
-                    file: File {
-                        hash: "3b19355d701899dc90ee77525d52ce67007bd346".to_string(),
-                        size: 63488,
-                        mime: "application/pdf".to_string(),
-                        license: "Todos os direitos reservados".to_string(),
-                        url: "/faculdade/ficheiro/3b19355d701899dc90ee77525d52ce67007bd346/".to_string()
-                    },
-                    name: "regulamento_estagios.pdf".to_string(),
-                    category: FileCategory::Others,
-                    upload_datetime: "2021-03-24T02:06:49.551799Z".to_string(),
-                    uploader: None,
-                    uploader_teacher: None,
-                    url: "".to_string()
-                }
-            ],
+            official: vec![ClassInstanceFile {
+                id: 214498,
+                file: File {
+                    hash: "3b19355d701899dc90ee77525d52ce67007bd346".to_string(),
+                    size: 63488,
+                    mime: "application/pdf".to_string(),
+                    license: "Todos os direitos reservados".to_string(),
+                    url: "/faculdade/ficheiro/3b19355d701899dc90ee77525d52ce67007bd346/"
+                        .to_string()
+                },
+                name: "regulamento_estagios.pdf".to_string(),
+                category: FileCategory::Others,
+                upload_datetime: "2021-03-24T02:06:49.551799Z".to_string(),
+                uploader: None,
+                uploader_teacher: None,
+                url: "".to_string()
+            }],
             community: vec![]
         }
     )
 }
-
-

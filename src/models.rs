@@ -320,8 +320,8 @@ impl Department {
 
     pub fn get_courses(&self) -> Result<Vec<Course>, Error> {
         let mut result = vec![];
-        for course_ref in self.courses.iter() {
-            result.push(course_ref.coerce()?)
+        for course_ref in &self.courses {
+            result.push(course_ref.coerce()?);
         }
         Ok(result)
     }
@@ -330,8 +330,8 @@ impl Department {
 impl Building {
     pub fn get_rooms(&self) -> Result<Vec<Place>, Error> {
         let mut result = vec![];
-        for places_ref in self.places.iter() {
-            result.push(places_ref.coerce()?)
+        for places_ref in &self.places {
+            result.push(places_ref.coerce()?);
         }
         Ok(result)
     }
@@ -378,8 +378,8 @@ impl Class {
 
     pub fn get_instances(&self) -> Result<Vec<ClassInstance>, Error> {
         let mut result = vec![];
-        for instance_ref in self.instances.iter() {
-            result.push(instance_ref.coerce()?)
+        for instance_ref in &self.instances {
+            result.push(instance_ref.coerce()?);
         }
         Ok(result)
     }
@@ -396,16 +396,16 @@ impl ClassInstance {
 
     pub fn get_enrollments(&self) -> Result<Vec<Enrollment>, Error> {
         let mut result = vec![];
-        for student_ref in self.enrollments.iter() {
-            result.push(student_ref.coerce()?)
+        for student_ref in &self.enrollments {
+            result.push(student_ref.coerce()?);
         }
         Ok(result)
     }
 
     pub fn get_shifts(&self) -> Result<Vec<ClassShift>, Error> {
         let mut result = vec![];
-        for shift_ref in self.shifts.iter() {
-            result.push(shift_ref.coerce()?)
+        for shift_ref in &self.shifts {
+            result.push(shift_ref.coerce()?);
         }
         Ok(result)
     }
@@ -422,16 +422,16 @@ impl Student {
 
     pub fn get_enrollments(&self) -> Result<Vec<Enrollment>, Error> {
         let mut result = vec![];
-        for enrollment_ref in self.enrollments.iter() {
-            result.push(enrollment_ref.coerce()?)
+        for enrollment_ref in &self.enrollments {
+            result.push(enrollment_ref.coerce()?);
         }
         Ok(result)
     }
 
     pub fn get_shifts(&self) -> Result<Vec<ClassShift>, Error> {
         let mut result = vec![];
-        for shift_ref in self.shifts.iter() {
-            result.push(shift_ref.coerce()?)
+        for shift_ref in &self.shifts {
+            result.push(shift_ref.coerce()?);
         }
         Ok(result)
     }
@@ -440,16 +440,16 @@ impl Student {
 impl Teacher {
     pub fn get_departments(&self) -> Result<Vec<Department>, Error> {
         let mut result = vec![];
-        for department_ref in self.departments.iter() {
-            result.push(department_ref.coerce()?)
+        for department_ref in &self.departments {
+            result.push(department_ref.coerce()?);
         }
         Ok(result)
     }
 
     pub fn get_shifts(&self) -> Result<Vec<ClassShift>, Error> {
         let mut result = vec![];
-        for shift_ref in self.shifts.iter() {
-            result.push(shift_ref.coerce()?)
+        for shift_ref in &self.shifts {
+            result.push(shift_ref.coerce()?);
         }
         Ok(result)
     }
@@ -457,18 +457,18 @@ impl Teacher {
 
 impl Enrollment {
     pub fn get_student(&self) -> Result<Student, Error> {
-        Ok(self.student.coerce()?)
+        self.student.coerce()
     }
     pub fn get_class_instance(&self) -> Result<ClassInstance, Error> {
-        Ok(self.class_instance.coerce()?)
+        self.class_instance.coerce()
     }
 }
 
 impl ClassShift {
     pub fn get_teachers(&self) -> Result<Vec<Teacher>, Error> {
         let mut result = vec![];
-        for teacher_ref in self.teachers.iter() {
-            result.push(teacher_ref.coerce()?)
+        for teacher_ref in &self.teachers {
+            result.push(teacher_ref.coerce()?);
         }
         Ok(result)
     }

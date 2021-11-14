@@ -2,6 +2,7 @@ use crate::keys;
 use crate::network::models as nmodels;
 use std::collections::HashMap;
 
+#[allow(clippy::struct_excessive_bools)]
 #[derive(Default)]
 pub(crate) struct ClientCache {
     pub(crate) departments: HashMap<keys::DepartmentKey, nmodels::Department>,

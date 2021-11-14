@@ -129,13 +129,13 @@ pub(crate) enum FileCategory {
 pub(crate) enum FileLicense {
     RightsReserved = 0,
     PublicDomain = 1,
-    GPL = 2,
-    MIT = 3,
-    BSD = 4,
-    CCBy = 5,
-    CCBySa = 6,
-    CCByNc = 7,
-    CCBySaNc = 8,
+    Gpl = 2,
+    Mit = 3,
+    Bsd = 4,
+    CcBy = 5,
+    CcBySa = 6,
+    CcByNc = 7,
+    CcBySaNc = 8,
     GenericPermissive = 100,
 }
 

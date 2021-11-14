@@ -4,11 +4,11 @@ use crate::models;
 use crate::models::ShiftType;
 use crate::network::models as nmodels;
 use crate::network::models::RoomType;
-use crate::{Supernova, ShiftKey};
+use crate::{ShiftKey, Supernova};
 use std::sync::Arc;
 
 impl nmodels::Building {
-    pub(crate) fn link(&self, client: Arc<Supernova>) -> models::Building {
+    pub(crate) fn link(&self, client: &Arc<Supernova>) -> models::Building {
         models::Building {
             id: self.id,
             name: self.name.clone(),
@@ -28,27 +28,18 @@ impl nmodels::Place {
             id: self.id,
             name: self.name.clone(),
             floor: 0,
-            building: if let Some(building_ref) = self.building {
-                Some(ObjRef::<models::Building, BuildingKey>::new(
-                    building_ref,
-                    client.clone(),
-                ))
-            } else {
-                None
-            },
+            building: self.building.map(|building_ref| {
+                ObjRef::<models::Building, BuildingKey>::new(building_ref, client.clone())
+            }),
             picture: None,
             picture_cover: None,
             variant: if let Some(meta) = &self.room_meta {
                 models::PlaceVariant::Room(models::Room {
-                    department: if let Some(ndept) = meta.department {
-                        Some(ObjRef::<models::Department, DepartmentKey>::new(
-                            ndept, client,
-                        ))
-                    } else {
-                        None
-                    },
-                    capacity: meta.capacity.clone(),
-                    door_number: meta.door_number.clone(),
+                    department: meta.department.map(|ndept| {
+                        ObjRef::<models::Department, DepartmentKey>::new(ndept, client)
+                    }),
+                    capacity: meta.capacity,
+                    door_number: meta.door_number,
                     room_type: models::RoomType::from(meta.room_type),
                     description: meta.description.clone(),
                     equipment: meta.equipment.clone(),
@@ -71,11 +62,9 @@ impl nmodels::Department {
                 .iter()
                 .map(|key| ObjRef::<models::Course, CourseKey>::new(*key, client.clone()))
                 .collect(),
-            building: if let Some(key) = self.building {
-                Some(ObjRef::<models::Building, BuildingKey>::new(key, client))
-            } else {
-                None
-            },
+            building: self
+                .building
+                .map(|key| ObjRef::<models::Building, BuildingKey>::new(key, client)),
         }
     }
 }
@@ -87,30 +76,23 @@ impl nmodels::Course {
             abbreviation: self.abbreviation.clone(),
             name: self.name.clone(),
             degree: models::Degree::from(self.degree),
-            department: if let Some(key) = self.department {
-                Some(ObjRef::<models::Department, CourseKey>::new(key, client))
-            } else {
-                None
-            },
+            department: self
+                .department
+                .map(|key| ObjRef::<models::Department, CourseKey>::new(key, client)),
         }
     }
 }
 
 impl nmodels::Class {
-    pub(crate) fn link(&self, client: Arc<Supernova>) -> models::Class {
+    pub(crate) fn link(&self, client: &Arc<Supernova>) -> models::Class {
         models::Class {
             id: self.id,
             name: self.name.clone(),
             abbreviation: self.abbreviation.clone(),
             credits: self.credits,
-            department: if let Some(key) = self.department {
-                Some(ObjRef::<models::Department, DepartmentKey>::new(
-                    key,
-                    client.clone(),
-                ))
-            } else {
-                None
-            },
+            department: self
+                .department
+                .map(|key| ObjRef::<models::Department, DepartmentKey>::new(key, client.clone())),
             instances: self
                 .instances
                 .iter()
@@ -131,22 +113,20 @@ impl nmodels::ClassInstance {
             enrollments: self
                 .enrollments
                 .iter()
-                .map(|enrollment| ObjRef::<models::Enrollment, EnrollmentKey>::new(enrollment.id, client.clone()))
+                .map(|enrollment| {
+                    ObjRef::<models::Enrollment, EnrollmentKey>::new(enrollment.id, client.clone())
+                })
                 .collect(),
             information: self.information.upstream.clone(),
-            avg_grade: self.avg_grade.clone(),
+            avg_grade: self.avg_grade,
             shifts: self
                 .shifts
                 .iter()
                 .map(|shift| ObjRef::<models::ClassShift, ShiftKey>::new(shift.id, client.clone()))
                 .collect(),
-            department: if let Some(key) = self.department {
-                Some(ObjRef::<models::Department, DepartmentKey>::new(
-                    key, client,
-                ))
-            } else {
-                None
-            },
+            department: self
+                .department
+                .map(|key| ObjRef::<models::Department, DepartmentKey>::new(key, client)),
         }
     }
 }
@@ -170,19 +150,17 @@ impl nmodels::Student {
                 .collect(),
             first_year: self.first_year,
             last_year: self.last_year,
-            course: if let Some(key) = self.course {
-                Some(ObjRef::<models::Course, CourseKey>::new(key, client))
-            } else {
-                None
-            },
-            avg_grade: self.avg_grade.clone(),
+            course: self
+                .course
+                .map(|key| ObjRef::<models::Course, CourseKey>::new(key, client)),
+            avg_grade: self.avg_grade,
             url: self.url.clone(),
         }
     }
 }
 
 impl nmodels::Teacher {
-    pub(crate) fn link(&self, client: Arc<Supernova>) -> models::Teacher {
+    pub(crate) fn link(&self, client: &Arc<Supernova>) -> models::Teacher {
         models::Teacher {
             id: self.id,
             name: self.name.clone(),
@@ -217,24 +195,24 @@ impl nmodels::Enrollment {
                 client.clone(),
             ),
             student: ObjRef::<models::Student, StudentKey>::new(self.student, client),
-            attendance: self.attendance.clone(),
+            attendance: self.attendance,
             attendance_date: self.attendance_date.clone(),
-            normal_grade: self.normal_grade.clone(),
+            normal_grade: self.normal_grade,
             normal_grade_date: self.normal_grade_date.clone(),
-            recourse_grade: self.recourse_grade.clone(),
+            recourse_grade: self.recourse_grade,
             recourse_grade_date: self.recourse_grade_date.clone(),
-            special_grade: self.special_grade.clone(),
+            special_grade: self.special_grade,
             special_grade_date: self.special_grade_date.clone(),
             improvement_grade: self.improvement_grade,
             improvement_grade_date: self.improvement_grade_date.clone(),
-            approved: self.approved.clone(),
-            grade: self.grade.clone(),
+            approved: self.approved,
+            grade: self.grade,
         }
     }
 }
 
 impl nmodels::ClassShift {
-    pub(crate) fn link(&self, client: Arc<Supernova>) -> models::ClassShift {
+    pub(crate) fn link(&self, client: &Arc<Supernova>) -> models::ClassShift {
         models::ClassShift {
             id: self.id,
             number: self.number,
@@ -346,11 +324,9 @@ impl nmodels::ClassShiftInstance {
             weekday: models::Weekday::from(self.weekday),
             start: self.start,
             duration: self.duration,
-            room: if let Some(key) = self.room {
-                Some(ObjRef::<models::Place, PlaceKey>::new(key, client))
-            } else {
-                None
-            },
+            room: self
+                .room
+                .map(|key| ObjRef::<models::Place, PlaceKey>::new(key, client)),
         }
     }
 }
