@@ -1,6 +1,6 @@
 [package]
 name = "iron_planet"
-version = "0.2.1"
+version = "0.2.2"
 edition = "2021"
 description = "Supernova platform client"
 license = "AGPL-3.0"
@@ -8,6 +8,7 @@ homepage = "https://supernova.nunl.pt"
 repository = "https://gitlab.com/nunl/supernova_client_rust"
 keywords = ["Supernova", "service", "API", "client"]
 exclude = ["/tests"]
+authors = ["Cláudio Pereira <crates@claudiop.com>"]
 
 
 [dependencies]
