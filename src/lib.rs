@@ -22,7 +22,7 @@ use crate::utils::get_client_meta;
 use std::sync::{Arc, RwLock};
 
 pub(crate) mod coersion;
-mod errors;
+pub mod errors;
 pub mod keys;
 pub mod models;
 mod network;
