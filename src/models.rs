@@ -1,4 +1,6 @@
 use crate::coersion::ObjRef;
+use chrono::{DateTime, Utc};
+use std::sync::Arc;
 
 use crate::errors::Error;
 use crate::keys::*;
@@ -481,5 +483,44 @@ impl ClassShiftInstance {
         } else {
             None
         })
+    }
+}
+
+// ----------------------------------------------------
+
+#[derive(Debug, Clone)]
+pub struct NewsPage {
+    pub(crate) previous_page: Option<Arc<NewsPage>>,
+    pub(crate) next_page: ObjRef<Option<Arc<NewsPage>>, NewsPageKey>,
+    pub(crate) items: Vec<Arc<NewsItem>>,
+}
+
+impl NewsPage {
+    pub fn items(&self) -> &[Arc<NewsItem>] {
+        self.items.as_slice()
+    }
+
+    pub fn predecessor(&self) -> Option<Arc<NewsPage>> {
+        self.previous_page.clone()
+    }
+
+    pub fn successor(&self) -> Result<Option<Arc<NewsPage>>, Error> {
+        Ok(self.next_page.coerce()?)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct NewsItem {
+    pub id: NewsItemKey,
+    pub title: String,
+    pub summary: String,
+    pub datetime: DateTime<Utc>,
+    pub thumb: Option<String>,
+    pub url: String,
+}
+
+impl PartialEq for NewsItem {
+    fn eq(&self, other: &Self) -> bool {
+        self.id.eq(&other.id)
     }
 }

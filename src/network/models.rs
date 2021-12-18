@@ -1,5 +1,6 @@
 use crate::keys::*;
 use crate::ShiftKey;
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_repr::Deserialize_repr;
 
@@ -421,4 +422,22 @@ pub(crate) struct Enrollment {
     pub(crate) improvement_grade_date: Option<String>,
     pub(crate) approved: Option<bool>,
     pub(crate) grade: Option<u8>,
+}
+
+#[derive(Deserialize, Debug, PartialEq, Clone)]
+pub(crate) struct NewsPage {
+    pub(crate) count: u32,
+    pub(crate) next: Option<String>,
+    pub(crate) previous: Option<String>,
+    pub(crate) results: Vec<NewsItem>,
+}
+
+#[derive(Deserialize, Debug, PartialEq, Clone)]
+pub(crate) struct NewsItem {
+    pub(crate) id: NewsItemKey,
+    pub(crate) title: String,
+    pub(crate) summary: String,
+    pub(crate) datetime: DateTime<Utc>,
+    pub(crate) thumb: Option<String>,
+    pub(crate) url: String,
 }

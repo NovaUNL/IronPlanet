@@ -11,3 +11,7 @@ pub type EnrollmentKey = u32;
 pub type FileKey = u32;
 pub type PlaceKey = u32;
 pub type PlaceFeatureKey = u32;
+
+//                    Limit, offset
+pub type NewsPageKey = (u16, u32);
+pub type NewsItemKey = u32;

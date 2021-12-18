@@ -127,3 +127,11 @@ impl CoersibleEntity<ShiftKey> for ClassShift {
 }
 
 impl ObjRef<ClassShift, ShiftKey> {}
+
+impl CoersibleEntity<NewsPageKey> for Option<Arc<NewsPage>> {
+    fn coerce(id: &NewsPageKey, client: Arc<Supernova>) -> Result<Self, Error> {
+        client.get_news_page(*id, &RequestConfig::default())
+    }
+}
+
+impl ObjRef<ClassShift, ShiftKey> {}

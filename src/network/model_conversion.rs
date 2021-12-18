@@ -330,3 +330,37 @@ impl nmodels::ClassShiftInstance {
         }
     }
 }
+
+// ----------------------------------------------
+
+impl nmodels::NewsPage {
+    pub(crate) fn link(&self, client: &Arc<Supernova>, key: NewsPageKey) -> Arc<models::NewsPage> {
+        let (limit, offset) = key;
+        let next_page_key = (limit, offset + limit as u32);
+        Arc::new(models::NewsPage {
+            previous_page: None,
+            next_page: ObjRef::<Option<Arc<models::NewsPage>>, NewsPageKey>::new(
+                next_page_key,
+                client.clone(),
+            ),
+            items: self
+                .results
+                .iter()
+                .map(|item| Arc::new(item.to_model()))
+                .collect(),
+        })
+    }
+}
+
+impl nmodels::NewsItem {
+    pub(crate) fn to_model(&self) -> models::NewsItem {
+        models::NewsItem {
+            id: self.id,
+            title: self.title.to_string(),
+            summary: self.summary.to_string(),
+            datetime: self.datetime.clone(),
+            thumb: self.thumb.clone(),
+            url: self.url.clone(),
+        }
+    }
+}

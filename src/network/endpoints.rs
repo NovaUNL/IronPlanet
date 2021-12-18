@@ -49,8 +49,7 @@ pub enum Endpoint {
     // Groups,
     // Group(u32),
     // GroupMembership(u32),
-    // News,
-    // NewsItem(u32),
+    NewsItemPage(NewsPageKey),
 }
 
 impl fmt::Display for Endpoint {
@@ -82,9 +81,9 @@ impl fmt::Display for Endpoint {
             // Endpoint::Groups => f.write_str("groups"),
             // Endpoint::Group(id) => f.write_fmt(format_args!("group/{}", id)),
             // Endpoint::GroupMembership(id) => f.write_fmt(format_args!("group/{}/members", id)),
-            // Endpoint::News => f.write_str("news"),
-            // Endpoint::NewsItem(id) => f.write_fmt(format_args!("news/{}", id)),
-            // _ => todo!(),
+            Endpoint::NewsItemPage((limit, offset)) => {
+                f.write_fmt(format_args!("news/?limit={}&offset={}", limit, offset))
+            } // _ => todo!(),
         }
     }
 }
@@ -195,6 +194,15 @@ impl BaseSupernova {
         key: keys::ClassKey,
     ) -> Result<nmodels::Class, Error> {
         self.generic_fetch(http, &Endpoint::Class(key).to_string())
+    }
+
+    pub(crate) fn fetch_news(
+        &self,
+        http: &HTTPClient,
+        key: keys::NewsPageKey,
+    ) -> Result<nmodels::NewsPage, Error> {
+        let endpoint = Endpoint::NewsItemPage(key);
+        self.generic_fetch(http, &endpoint.to_string())
     }
 }
 

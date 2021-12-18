@@ -1,6 +1,6 @@
 [package]
-name = "iron_planet"
-version = "0.2.2"
+name = "supernova"
+version = "0.3.0"
 edition = "2021"
 description = "Supernova platform client"
 license = "AGPL-3.0"
@@ -23,3 +23,4 @@ lazy_static = "1.4.0"
 thiserror = "1.0"
 
 sysinfo = "0.21.1"
+chrono = { version = "0.4.19", features = ["serde"] }

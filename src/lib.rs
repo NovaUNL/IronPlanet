@@ -28,6 +28,8 @@ pub mod models;
 mod network;
 mod utils;
 
+const DEFAULT_PAGE_ITEM_LIMIT: u16 = 100;
+
 #[derive(Default)]
 pub struct Supernova {
     base: BaseSupernova,
@@ -462,6 +464,27 @@ impl Supernova {
         let shift = net_shift.link(&self.clone());
         cache.class_shifts.insert(net_shift.id, net_shift);
         Ok(shift)
+    }
+
+    pub fn get_news_front_page(
+        self: &Arc<Supernova>,
+        conf: &RequestConfig,
+    ) -> Result<Option<Arc<models::NewsPage>>, Error> {
+        let key = (DEFAULT_PAGE_ITEM_LIMIT, 0);
+        self.get_news_page(key, conf)
+    }
+
+    pub fn get_news_page(
+        self: &Arc<Supernova>,
+        key: NewsPageKey,
+        _conf: &RequestConfig,
+    ) -> Result<Option<Arc<models::NewsPage>>, Error> {
+        let net_news_page = self.base.fetch_news(&self.http_client, key)?;
+        if net_news_page.results.is_empty() {
+            Ok(None)
+        } else {
+            Ok(Some(net_news_page.link(&self.clone(), key)))
+        }
     }
 
     pub fn warmup(self: &Arc<Supernova>) -> Result<(), Error> {
