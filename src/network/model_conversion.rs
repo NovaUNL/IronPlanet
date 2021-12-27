@@ -4,6 +4,7 @@ use crate::models;
 use crate::models::ShiftType;
 use crate::network::models as nmodels;
 use crate::network::models::RoomType;
+use crate::nmodels::{GroupActivity, GroupEventType, GroupScheduling, GroupType, GroupVisibility};
 use crate::{ShiftKey, Supernova};
 use std::sync::Arc;
 
@@ -331,7 +332,229 @@ impl nmodels::ClassShiftInstance {
     }
 }
 
-// ----------------------------------------------
+// ------------ Users ---------------
+
+impl nmodels::User {
+    #[allow(dead_code)] // TODO
+    pub(crate) fn to_model(&self) -> models::User {
+        models::User { id: 0 }
+    }
+}
+
+// ------------ Groups --------------
+
+impl nmodels::WeakGroup {
+    pub(crate) fn link(&self, client: Arc<Supernova>) -> models::Group {
+        models::Group {
+            id: self.id,
+            name: self.name.clone(),
+            abbreviation: self.abbreviation.clone(),
+            url: self.url.clone(),
+            thumb: self.thumb.clone(),
+            group_type: self.group_type.into(),
+            official: self.official,
+            upgraded: false,
+            client,
+            outsider_openness: Default::default(),
+            activities: Default::default(),
+            schedulings: Default::default(),
+            events: Default::default(),
+        }
+    }
+}
+
+impl nmodels::Group {
+    #[allow(unused)]
+    pub(crate) fn link(&self, client: Arc<Supernova>) -> models::Group {
+        let group = models::Group {
+            id: self.id,
+            name: self.name.clone(),
+            abbreviation: self.abbreviation.clone(),
+            url: self.url.clone(),
+            thumb: self.thumb.clone(),
+            group_type: self.group_type.into(),
+            official: self.official,
+            upgraded: false,
+            client: client.clone(),
+            outsider_openness: Default::default(),
+            activities: Default::default(),
+            schedulings: Default::default(),
+            events: Default::default(),
+        };
+        group.outsider_openness.set(self.outsider_openness.into());
+        group.activities.set(
+            self.activities
+                .iter()
+                .map(|activity| activity.link(client.clone()))
+                .collect(),
+        );
+        group.schedulings.set(
+            self.schedule_entries
+                .iter()
+                .map(|scheduling| scheduling.to_model())
+                .collect(),
+        );
+        group.events.set(
+            self.events
+                .iter()
+                .map(|event| event.link(client.clone()))
+                .collect(),
+        );
+        group
+    }
+}
+
+impl nmodels::GroupActivity {
+    pub(crate) fn link(&self, client: Arc<Supernova>) -> models::GroupActivity {
+        match self {
+            GroupActivity::Announcement(activity) => {
+                models::GroupActivity::Announcement(activity.link(client))
+            }
+            GroupActivity::EventAnnouncement(activity) => {
+                models::GroupActivity::EventAnnouncement(activity.link(client))
+            }
+            GroupActivity::GalleryUpload(activity) => {
+                models::GroupActivity::GalleryUpload(activity.link(client))
+            }
+        }
+    }
+}
+
+impl nmodels::Event {
+    pub(crate) fn link(&self, client: Arc<Supernova>) -> models::Event {
+        models::Event {
+            id: self.id,
+            title: self.title.clone(),
+            description: self.description.clone(),
+            weekday: self.weekday.into(),
+            start_date: self.start_date.clone(),
+            end_date: self.end_date.clone(),
+            duration: self.duration.clone(),
+            place: self
+                .place
+                .map(|key| ObjRef::<models::Place, PlaceKey>::new(key, client.clone())),
+            capacity: self.capacity.clone(),
+            cost: self.cost.clone(),
+            event_type: self.event_type.into(),
+        }
+    }
+}
+
+impl nmodels::GroupAnnouncement {
+    pub(crate) fn link(&self, client: Arc<Supernova>) -> models::GroupAnnouncement {
+        models::GroupAnnouncement {
+            author: ObjRef::<models::User, UserKey>::new(self.author, client),
+            title: self.title.clone(),
+            content: self.content.clone(),
+            datetime: self.datetime,
+        }
+    }
+}
+
+impl nmodels::EventAnnouncement {
+    pub(crate) fn link(&self, client: Arc<Supernova>) -> models::EventAnnouncement {
+        models::EventAnnouncement {
+            author: ObjRef::<models::User, UserKey>::new(self.author, client.clone()),
+            event: ObjRef::<models::Event, EventKey>::new(self.event, client),
+            datetime: self.datetime,
+        }
+    }
+}
+
+impl nmodels::GalleryUpload {
+    pub(crate) fn link(&self, client: Arc<Supernova>) -> models::GalleryUpload {
+        models::GalleryUpload {
+            author: ObjRef::<models::User, UserKey>::new(self.author, client),
+            datetime: self.datetime,
+            item: models::GalleryItem {}, // TODO
+        }
+    }
+}
+
+impl nmodels::GalleryItem {
+    pub(crate) fn to_model(&self) -> models::GalleryItem {
+        // TODO
+        models::GalleryItem {}
+    }
+}
+
+impl nmodels::GroupScheduling {
+    pub(crate) fn to_model(&self) -> models::GroupScheduling {
+        match self {
+            GroupScheduling::ScheduleOnce(sheduling) => {
+                models::GroupScheduling::Once(sheduling.to_model())
+            }
+            GroupScheduling::SchedulePeriodic(sheduling) => {
+                models::GroupScheduling::Periodic(sheduling.to_model())
+            }
+        }
+    }
+}
+
+impl nmodels::GroupSchedulingOnce {
+    pub(crate) fn to_model(&self) -> models::GroupSchedulingOnce {
+        models::GroupSchedulingOnce {
+            title: self.title.clone(),
+            datetime: self.datetime,
+            duration: self.duration,
+            revoked: self.revoked,
+        }
+    }
+}
+
+impl nmodels::GroupSchedulingPeriodic {
+    pub(crate) fn to_model(&self) -> models::GroupSchedulingPeriodic {
+        models::GroupSchedulingPeriodic {
+            title: self.title.clone(),
+            weekday: self.weekday.into(),
+            start_date: self.start_date,
+            end_date: self.end_date,
+            item: self.item.to_model(),
+            duration: self.duration,
+            revoked: self.revoked,
+        }
+    }
+}
+
+impl From<nmodels::GroupType> for models::GroupType {
+    fn from(gtype: nmodels::GroupType) -> Self {
+        match gtype {
+            GroupType::Institutional => Self::Institutional,
+            GroupType::Nuclei => Self::Nuclei,
+            GroupType::AcademicAssociation => Self::AcademicAssociation,
+            GroupType::Pedagogic => Self::Pedagogic,
+            GroupType::Praxis => Self::Praxis,
+            GroupType::Community => Self::Community,
+        }
+    }
+}
+
+impl From<nmodels::GroupVisibility> for models::GroupVisibility {
+    fn from(visibility: nmodels::GroupVisibility) -> Self {
+        match visibility {
+            GroupVisibility::Secret => Self::Secret,
+            GroupVisibility::Closed => Self::Closed,
+            GroupVisibility::Request => Self::Request,
+            GroupVisibility::Open => Self::Open,
+        }
+    }
+}
+
+impl From<nmodels::GroupEventType> for models::GroupEventType {
+    fn from(event_type: nmodels::GroupEventType) -> Self {
+        match event_type {
+            GroupEventType::Generic => Self::Generic,
+            GroupEventType::Talk => Self::Talk,
+            GroupEventType::Workshop => Self::Workshop,
+            GroupEventType::Party => Self::Party,
+            GroupEventType::Contest => Self::Contest,
+            GroupEventType::Fair => Self::Fair,
+            GroupEventType::Meeting => Self::Meeting,
+        }
+    }
+}
+
+// ------------ News ----------------
 
 impl nmodels::NewsPage {
     pub(crate) fn link(&self, client: &Arc<Supernova>, key: NewsPageKey) -> Arc<models::NewsPage> {

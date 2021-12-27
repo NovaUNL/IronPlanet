@@ -46,9 +46,10 @@ pub enum Endpoint {
     Teacher(TeacherKey),
     Enrollment(EnrollmentKey),
     Shift(ShiftKey),
-    // Groups,
-    // Group(u32),
-    // GroupMembership(u32),
+
+    Groups,
+    Group(GroupKey),
+
     NewsItemPage(NewsPageKey),
 }
 
@@ -78,9 +79,9 @@ impl fmt::Display for Endpoint {
             // Endpoint::ClassInstanceSchedule(id) => {
             //     f.write_fmt(format_args!("class/i/{}/schedule", id))
             // }
-            // Endpoint::Groups => f.write_str("groups"),
-            // Endpoint::Group(id) => f.write_fmt(format_args!("group/{}", id)),
-            // Endpoint::GroupMembership(id) => f.write_fmt(format_args!("group/{}/members", id)),
+            Endpoint::Groups => f.write_str("groups"),
+            Endpoint::Group(id) => f.write_fmt(format_args!("group/{}", id)),
+
             Endpoint::NewsItemPage((limit, offset)) => {
                 f.write_fmt(format_args!("news/?limit={}&offset={}", limit, offset))
             } // _ => todo!(),
@@ -194,6 +195,20 @@ impl BaseSupernova {
         key: keys::ClassKey,
     ) -> Result<nmodels::Class, Error> {
         self.generic_fetch(http, &Endpoint::Class(key).to_string())
+    }
+
+    pub(crate) fn fetch_groups(&self, http: &HTTPClient) -> Result<Vec<nmodels::WeakGroup>, Error> {
+        let endpoint = Endpoint::Groups;
+        self.generic_fetch(http, &endpoint.to_string())
+    }
+
+    pub(crate) fn fetch_group(
+        &self,
+        http: &HTTPClient,
+        key: GroupKey,
+    ) -> Result<nmodels::Group, Error> {
+        let endpoint = Endpoint::Group(key);
+        self.generic_fetch(http, &endpoint.to_string())
     }
 
     pub(crate) fn fetch_news(

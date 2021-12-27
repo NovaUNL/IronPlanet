@@ -128,10 +128,32 @@ impl CoersibleEntity<ShiftKey> for ClassShift {
 
 impl ObjRef<ClassShift, ShiftKey> {}
 
+// ------------ Users ------------
+
+impl CoersibleEntity<UserKey> for User {
+    fn coerce(_id: &UserKey, _client: Arc<Supernova>) -> Result<Self, Error> {
+        Err(Error::Generic)
+        // client.get_user(*id, &RequestConfig::default())
+    }
+}
+
+impl ObjRef<User, UserKey> {}
+
+// ------------ Groups ------------
+
+impl CoersibleEntity<EventKey> for Event {
+    fn coerce(_id: &EventKey, _client: Arc<Supernova>) -> Result<Self, Error> {
+        Err(Error::Generic)
+        // client.get_event(*id, &RequestConfig::default())
+    }
+}
+
+impl ObjRef<Event, EventKey> {}
+
+// ------------ News --------------
+
 impl CoersibleEntity<NewsPageKey> for Option<Arc<NewsPage>> {
     fn coerce(id: &NewsPageKey, client: Arc<Supernova>) -> Result<Self, Error> {
         client.get_news_page(*id, &RequestConfig::default())
     }
 }
-
-impl ObjRef<ClassShift, ShiftKey> {}

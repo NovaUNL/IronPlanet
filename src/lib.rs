@@ -280,9 +280,9 @@ impl Supernova {
         let net_place = self.base.fetch_place(&self.http_client, id)?;
 
         let mut cache = self.cache.write().unwrap();
-        let room = net_place.link(self.clone());
+        let place = net_place.link(self.clone());
         cache.places.insert(net_place.id, net_place);
-        Ok(room)
+        Ok(place)
     }
 
     pub fn get_department(
@@ -487,6 +487,46 @@ impl Supernova {
         }
     }
 
+    pub fn get_groups(
+        self: &Arc<Supernova>,
+        conf: &RequestConfig,
+    ) -> Result<Vec<models::Group>, Error> {
+        if !conf.evade_cache {
+            // Acquire read lock
+            let cache = self.cache.read().unwrap();
+            if cache.groups_populated {
+                return Ok(cache
+                    .groups
+                    .values()
+                    .map(|net_group| net_group.link(self.clone()))
+                    .collect::<Vec<models::Group>>());
+            }
+        } // Drop read lock
+
+        let net_groups = self.base.fetch_groups(&self.http_client)?;
+        {
+            let mut cache = self.cache.write().unwrap();
+            cache.groups_populated = true;
+            for ngroup in net_groups {
+                cache.groups.insert(ngroup.id, ngroup);
+            }
+        }
+        // Change write lock to read lock
+        {
+            let cache = self.cache.read().unwrap();
+            Ok(cache
+                .groups
+                .values()
+                .map(|net_group| net_group.link(self.clone()))
+                .collect())
+        }
+    }
+
+    pub fn get_group(self: &Arc<Supernova>, id: keys::GroupKey) -> Result<models::Group, Error> {
+        let net_group = self.base.fetch_group(&self.http_client, id)?;
+        Ok(net_group.link(self.clone()))
+    }
+
     pub fn warmup(self: &Arc<Supernova>) -> Result<(), Error> {
         let conf = RequestConfig::default();
         self.get_buildings(&conf)?;
@@ -494,6 +534,7 @@ impl Supernova {
         self.get_classes(&conf)?;
         self.get_departments(&conf)?;
         self.get_places(&conf)?;
+        self.get_groups(&conf)?;
         Ok(())
     }
 }

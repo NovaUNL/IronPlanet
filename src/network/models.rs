@@ -1,6 +1,6 @@
 use crate::keys::*;
 use crate::ShiftKey;
-use chrono::{DateTime, Utc};
+use chrono::{Date, DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_repr::Deserialize_repr;
 
@@ -159,7 +159,7 @@ pub(crate) enum Season {
 
 #[derive(Deserialize_repr, Debug, PartialEq, Copy, Clone)]
 #[repr(u8)]
-pub(crate) enum EventType {
+pub(crate) enum ClassEventType {
     Test = 1,
     Exam = 2,
     Discussion = 3,
@@ -424,6 +424,157 @@ pub(crate) struct Enrollment {
     pub(crate) grade: Option<u8>,
 }
 
+// ------------ Users ---------------
+
+#[derive(Deserialize, Debug, PartialEq, Copy, Clone)]
+pub struct User {
+    pub id: UserKey,
+}
+
+// --------- Groups ----------
+
+#[derive(Deserialize_repr, Debug, PartialEq, Copy, Clone)]
+#[repr(u8)]
+pub(crate) enum GroupType {
+    Institutional = 0,
+    Nuclei = 1,
+    AcademicAssociation = 2,
+    Pedagogic = 3,
+    Praxis = 4,
+    Community = 5,
+}
+
+#[derive(Deserialize_repr, Debug, PartialEq, Copy, Clone)]
+#[repr(u8)]
+pub(crate) enum GroupVisibility {
+    Secret = 0,
+    Closed = 1,
+    Request = 2,
+    Open = 3,
+}
+
+#[derive(Deserialize_repr, Debug, PartialEq, Copy, Clone)]
+#[repr(u8)]
+pub(crate) enum GroupEventType {
+    Generic = 1,
+    Talk = 2,
+    Workshop = 3,
+    Party = 4,
+    Contest = 5,
+    Fair = 6,
+    Meeting = 7,
+}
+
+#[derive(Deserialize, Debug, PartialEq, Clone)]
+pub(crate) struct WeakGroup {
+    pub(crate) id: GroupKey,
+    pub(crate) name: String,
+    pub(crate) abbreviation: String,
+    #[serde(rename = "type")]
+    pub(crate) group_type: GroupType,
+    pub(crate) official: bool,
+    pub(crate) url: String,
+    pub(crate) thumb: Option<String>,
+}
+
+#[derive(Deserialize, Debug, PartialEq, Clone)]
+pub(crate) struct Group {
+    pub(crate) id: GroupKey,
+    pub(crate) name: String,
+    pub(crate) abbreviation: String,
+    pub(crate) url: String,
+    pub(crate) thumb: Option<String>,
+    pub(crate) group_type: GroupType,
+    pub(crate) outsider_openness: GroupVisibility,
+    pub(crate) official: bool,
+
+    pub(crate) activities: Vec<GroupActivity>,
+    pub(crate) schedule_entries: Vec<GroupScheduling>,
+    pub(crate) events: Vec<Event>,
+}
+
+#[derive(Deserialize, Debug, PartialEq, Clone)]
+#[serde(tag = "resourcetype")]
+pub(crate) enum GroupActivity {
+    Announcement(GroupAnnouncement),
+    EventAnnouncement(EventAnnouncement),
+    GalleryUpload(GalleryUpload),
+}
+
+#[derive(Deserialize, Debug, PartialEq, Clone)]
+pub(crate) struct GroupAnnouncement {
+    pub(crate) author: UserKey,
+    pub(crate) title: String,
+    pub(crate) content: String,
+    pub(crate) datetime: DateTime<Utc>,
+}
+
+#[derive(Deserialize, Debug, PartialEq, Clone)]
+pub(crate) struct EventAnnouncement {
+    pub(crate) author: UserKey,
+    pub(crate) datetime: DateTime<Utc>,
+    pub(crate) event: EventKey,
+}
+
+#[derive(Deserialize, Debug, PartialEq, Clone)]
+pub(crate) struct GalleryUpload {
+    pub(crate) author: UserKey,
+    pub(crate) datetime: DateTime<Utc>,
+    pub(crate) item: GalleryItem,
+}
+
+#[derive(Deserialize, Debug, PartialEq, Clone)]
+pub(crate) struct GalleryItem {}
+
+#[derive(Deserialize, Debug, PartialEq, Clone)]
+#[serde(tag = "resourcetype")]
+pub(crate) enum GroupScheduling {
+    ScheduleOnce(GroupSchedulingOnce),
+    SchedulePeriodic(GroupSchedulingPeriodic),
+}
+
+#[derive(Deserialize, Debug, PartialEq, Clone)]
+pub(crate) struct GroupSchedulingOnce {
+    pub(crate) title: Option<String>,
+    pub(crate) datetime: DateTime<Utc>,
+    pub(crate) duration: u16,
+    pub(crate) revoked: bool,
+}
+
+#[derive(Deserialize, Debug, PartialEq, Clone)]
+pub(crate) struct GroupSchedulingPeriodic {
+    pub(crate) title: Option<String>,
+    pub(crate) weekday: Weekday,
+    #[serde(with = "upstream_date_format")]
+    pub(crate) start_date: Date<Utc>,
+    #[serde(with = "upstream_date_format")]
+    pub(crate) end_date: Date<Utc>,
+    pub(crate) item: GalleryItem,
+    pub(crate) duration: u16,
+    pub(crate) revoked: bool,
+}
+
+#[derive(Deserialize, Debug, PartialEq, Clone)]
+pub(crate) struct Event {
+    pub(crate) id: EventKey,
+    pub(crate) title: String,
+    pub(crate) description: String,
+    pub(crate) weekday: Weekday,
+    #[serde(with = "upstream_date_format")]
+    pub(crate) start_date: Date<Utc>,
+    #[serde(with = "upstream_date_format")]
+    pub(crate) end_date: Date<Utc>,
+    pub(crate) item: GalleryItem,
+    pub(crate) duration: Option<u16>,
+    pub(crate) place: Option<PlaceKey>,
+    pub(crate) capacity: Option<u32>,
+    pub(crate) cost: Option<u32>,
+    #[serde(rename = "type")]
+    pub(crate) event_type: GroupEventType,
+}
+
+// ------------ News --------------
+
 #[derive(Deserialize, Debug, PartialEq, Clone)]
 pub(crate) struct NewsPage {
     pub(crate) count: u32,
@@ -440,4 +591,22 @@ pub(crate) struct NewsItem {
     pub(crate) datetime: DateTime<Utc>,
     pub(crate) thumb: Option<String>,
     pub(crate) url: String,
+}
+
+mod upstream_date_format {
+    use chrono::{Date, TimeZone, Utc};
+    use serde::{self, Deserialize, Deserializer};
+
+    const FORMAT: &'static str = "%Y-%m-%d";
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Date<Utc>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        let datetime = Utc
+            .datetime_from_str(&s, FORMAT)
+            .map_err(serde::de::Error::custom)?;
+        Ok(datetime.date())
+    }
 }

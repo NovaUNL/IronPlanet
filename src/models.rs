@@ -1,10 +1,12 @@
 use crate::coersion::ObjRef;
-use chrono::{DateTime, Utc};
+use chrono::{Date, DateTime, Utc};
+use once_cell::sync::OnceCell;
 use std::sync::Arc;
 
 use crate::errors::Error;
 use crate::keys::*;
 pub use crate::network::models::{ClassInfo, ClassInfoEntry, ClassInfoSources};
+use crate::Supernova;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Weekday {
@@ -95,7 +97,7 @@ pub enum Season {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub enum EventType {
+pub enum ClassEventType {
     Test,
     Exam,
     Discussion,
@@ -486,7 +488,208 @@ impl ClassShiftInstance {
     }
 }
 
-// ----------------------------------------------------
+// ------------ Users ---------------
+
+#[derive(Debug, PartialEq, Copy, Clone)]
+pub struct User {
+    pub id: UserKey,
+}
+
+// ------------ Groups --------------
+
+#[derive(Debug, PartialEq, Copy, Clone)]
+pub enum GroupType {
+    Institutional,
+    Nuclei,
+    AcademicAssociation,
+    Pedagogic,
+    Praxis,
+    Community,
+}
+
+#[derive(Debug, PartialEq, Copy, Clone)]
+pub enum GroupVisibility {
+    Secret,
+    Closed,
+    Request,
+    Open,
+}
+
+#[derive(Debug, PartialEq, Copy, Clone)]
+pub enum GroupEventType {
+    Generic,
+    Talk,
+    Workshop,
+    Party,
+    Contest,
+    Fair,
+    Meeting,
+}
+
+pub struct Group {
+    pub id: GroupKey,
+    pub name: String,
+    pub abbreviation: String,
+    pub url: String,
+    pub thumb: Option<String>,
+    pub group_type: GroupType,
+    pub official: bool,
+    pub(crate) upgraded: bool,
+
+    pub(crate) client: Arc<Supernova>,
+    pub(crate) outsider_openness: OnceCell<GroupVisibility>,
+    pub(crate) activities: OnceCell<Vec<GroupActivity>>,
+    pub(crate) schedulings: OnceCell<Vec<GroupScheduling>>,
+    pub(crate) events: OnceCell<Vec<Event>>,
+}
+
+impl Group {
+    pub fn outsider_openness(&self) -> Result<GroupVisibility, Error> {
+        self.upgrade()?;
+        Ok(*self.outsider_openness.get().unwrap())
+    }
+
+    pub fn activities(&self) -> Result<&[GroupActivity], Error> {
+        self.upgrade()?;
+        Ok(self.activities.get().unwrap())
+    }
+
+    pub fn schedulings(&self) -> Result<&[GroupScheduling], Error> {
+        self.upgrade()?;
+        Ok(self.schedulings.get().unwrap())
+    }
+
+    pub fn events(&self) -> Result<&[Event], Error> {
+        self.upgrade()?;
+        Ok(self.events.get().unwrap().as_slice())
+    }
+
+    #[allow(unused)]
+    pub fn upgrade(&self) -> Result<(), Error> {
+        if !self.upgraded {
+            let group = self.client.get_group(self.id)?;
+
+            self.outsider_openness
+                .set(*group.outsider_openness.get().unwrap());
+            self.activities.set(group.activities.get().unwrap().clone());
+            self.schedulings
+                .set(group.schedulings.get().unwrap().clone());
+            self.events.set(group.events.get().unwrap().clone());
+        }
+        Ok(())
+    }
+}
+
+impl PartialEq for Group {
+    fn eq(&self, other: &Self) -> bool {
+        self.id.eq(&other.id)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum GroupActivity {
+    Announcement(GroupAnnouncement),
+    EventAnnouncement(EventAnnouncement),
+    GalleryUpload(GalleryUpload),
+}
+
+#[derive(Debug, Clone)]
+pub struct GroupAnnouncement {
+    pub(crate) author: ObjRef<User, UserKey>,
+    pub title: String,
+    pub content: String,
+    pub datetime: DateTime<Utc>,
+}
+
+impl GroupAnnouncement {
+    pub fn author(&self) -> Result<User, Error> {
+        self.author.coerce()
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct EventAnnouncement {
+    pub(crate) author: ObjRef<User, UserKey>,
+    pub(crate) event: ObjRef<Event, EventKey>,
+    pub datetime: DateTime<Utc>,
+}
+
+impl EventAnnouncement {
+    pub fn author(&self) -> Result<User, Error> {
+        self.author.coerce()
+    }
+    pub fn event(&self) -> Result<Event, Error> {
+        self.event.coerce()
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct GalleryUpload {
+    pub(crate) author: ObjRef<User, UserKey>,
+    pub datetime: DateTime<Utc>,
+    pub item: GalleryItem,
+}
+
+impl GalleryUpload {
+    pub fn author(&self) -> Result<User, Error> {
+        self.author.coerce()
+    }
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct GalleryItem {}
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum GroupScheduling {
+    Once(GroupSchedulingOnce),
+    Periodic(GroupSchedulingPeriodic),
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct GroupSchedulingOnce {
+    pub title: Option<String>,
+    pub datetime: DateTime<Utc>,
+    pub duration: u16,
+    pub revoked: bool,
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct GroupSchedulingPeriodic {
+    pub title: Option<String>,
+    pub weekday: Weekday,
+    pub start_date: Date<Utc>,
+    pub end_date: Date<Utc>,
+    pub item: GalleryItem,
+    pub duration: u16,
+    pub revoked: bool,
+}
+
+#[derive(Debug, Clone)]
+pub struct Event {
+    pub id: EventKey,
+    pub title: String,
+    pub description: String,
+    pub weekday: Weekday,
+    pub start_date: Date<Utc>,
+    pub end_date: Date<Utc>,
+    pub duration: Option<u16>,
+    pub(crate) place: Option<ObjRef<Place, PlaceKey>>,
+    pub capacity: Option<u32>,
+    pub cost: Option<u32>,
+    pub event_type: GroupEventType,
+}
+
+impl Event {
+    pub fn place(&self) -> Result<Option<Place>, Error> {
+        if let Some(place) = &self.place {
+            Ok(Some(place.coerce()?))
+        } else {
+            Ok(None)
+        }
+    }
+}
+
+// ------------ News --------------
 
 #[derive(Debug, Clone)]
 pub struct NewsPage {
