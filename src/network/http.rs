@@ -1,6 +1,7 @@
 use crate::errors::Error;
 use serde_json::Value;
 use std::collections::HashMap;
+use std::io::Read;
 use ureq::ErrorKind;
 
 #[derive(Default)]
@@ -44,6 +45,48 @@ impl HTTPClient {
 
         match code {
             100..=399 => Ok(response.into_string().map_err(|_| Error::Decode)?),
+            400..=499 => Err(Error::ResourceMissing),
+            500..=699 => Err(Error::Server),
+            _ => Err(Error::Generic),
+        }
+    }
+
+    pub(crate) fn fetch_bytes(&self, req: Request) -> Result<Vec<u8>, Error> {
+        let mut request = ureq::get(&req.url).set("iron_planet", env!("CARGO_PKG_VERSION"));
+
+        for (k, v) in &req.headers {
+            request = request.set(k, v);
+        }
+
+        let response = if let Some(value) = req.body {
+            request.send_json(value)
+        } else {
+            request.call()
+        }
+        .map_err(|e| match e.kind() {
+            ErrorKind::InvalidUrl | ErrorKind::UnknownScheme | ErrorKind::Io => Error::Client,
+            ErrorKind::ConnectionFailed
+            | ErrorKind::TooManyRedirects
+            | ErrorKind::BadStatus
+            | ErrorKind::BadHeader
+            | ErrorKind::HTTP => Error::Server,
+            ErrorKind::Dns
+            | ErrorKind::InvalidProxyUrl
+            | ErrorKind::ProxyConnect
+            | ErrorKind::ProxyUnauthorized => Error::Network,
+        })?;
+
+        let code = response.status();
+
+        match code {
+            100..=399 => {
+                let mut bytes: Vec<u8> = Vec::new();
+                response
+                    .into_reader()
+                    .read_to_end(&mut bytes)
+                    .map_err(|_| Error::Decode)?;
+                Ok(bytes)
+            }
             400..=499 => Err(Error::ResourceMissing),
             500..=699 => Err(Error::Server),
             _ => Err(Error::Generic),

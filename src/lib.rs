@@ -14,7 +14,7 @@
 use crate::errors::Error;
 use crate::keys::*;
 use crate::network::cache::ClientCache;
-use crate::network::endpoints::{AuthenticatedSupernova, BaseSupernova};
+use crate::network::endpoints::{AuthenticatedSupernova, BaseSupernova, UPSTREAM};
 use crate::network::http::HTTPClient;
 use crate::network::models::{self as nmodels, AuthToken};
 use crate::nmodels::ClientMeta;
@@ -66,6 +66,15 @@ impl Supernova {
         self.base.verify(&self.http_client, token.clone())?;
         self.authenticated.set_token(token);
         Ok(())
+    }
+
+    pub fn is_authenticated(&self) -> bool {
+        self.authenticated
+            .credentials
+            .lock()
+            .unwrap()
+            .borrow()
+            .is_some()
     }
 
     pub fn get_departments(
@@ -545,6 +554,15 @@ impl Supernova {
             Ok(None)
         } else {
             Ok(Some(net_news_page.link(&self.clone(), key)))
+        }
+    }
+
+    pub fn load_resource(self: &Arc<Supernova>, url: &str) -> Result<Vec<u8>, Error> {
+        let url = format!("{}{}", *UPSTREAM, url);
+        if self.is_authenticated() {
+            self.authenticated.fetch_bytes(&self.http_client, &url)
+        } else {
+            self.base.fetch_bytes(&self.http_client, &url)
         }
     }
 

@@ -11,7 +11,7 @@ use std::fmt;
 use std::sync::Mutex;
 
 lazy_static! {
-    static ref UPSTREAM: String = {
+    pub(crate) static ref UPSTREAM: String = {
         let default = "https://supernova.nunl.pt";
         // Allowing this override in release builds would allow token hijacking
         if cfg!(debug_assertions){
@@ -103,6 +103,12 @@ impl BaseSupernova {
         let json_str = http.send(request)?;
 
         serde_json::from_str(&json_str).map_err(|e| Error::Parsing(e, json_str.to_string()))
+    }
+
+    #[allow(clippy::unused_self)]
+    pub(crate) fn fetch_bytes(&self, http: &HTTPClient, url: &str) -> Result<Vec<u8>, Error> {
+        let request = RequestBuilder::new(url).build();
+        http.fetch_bytes(request)
     }
 
     #[allow(clippy::unused_self)]
@@ -236,7 +242,7 @@ impl BaseSupernova {
 
 #[derive(Default)]
 pub(crate) struct AuthenticatedSupernova {
-    credentials: Mutex<RefCell<Option<AuthToken>>>,
+    pub(crate) credentials: Mutex<RefCell<Option<AuthToken>>>,
 }
 
 impl AuthenticatedSupernova {
@@ -271,6 +277,21 @@ impl AuthenticatedSupernova {
 
         let json_str = http.send(request)?;
         serde_json::from_str(&json_str).map_err(|e| Error::Parsing(e, json_str.to_string()))
+    }
+
+    #[allow(clippy::unused_self)]
+    pub(crate) fn fetch_bytes(&self, http: &HTTPClient, url: &str) -> Result<Vec<u8>, Error> {
+        if let Some(credentials) = self.credentials.lock().unwrap().borrow().as_ref() {
+            let request = RequestBuilder::new(url)
+                .add_header(
+                    "Authorization".to_string(),
+                    format!("Token {}", credentials),
+                )
+                .build();
+            http.fetch_bytes(request)
+        } else {
+            Err(Error::MissingAuthentication)
+        }
     }
 
     pub(crate) fn logout(&self, http: &HTTPClient) -> Result<nmodels::TokenResult, Error> {
