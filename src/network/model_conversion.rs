@@ -6,6 +6,7 @@ use crate::network::models as nmodels;
 use crate::network::models::RoomType;
 use crate::nmodels::{GroupActivity, GroupEventType, GroupScheduling, GroupType, GroupVisibility};
 use crate::{ShiftKey, Supernova};
+use std::cell::Cell;
 use std::sync::Arc;
 
 impl nmodels::Building {
@@ -353,9 +354,9 @@ impl nmodels::WeakGroup {
             thumb: self.thumb.clone(),
             group_type: self.group_type.into(),
             official: self.official,
-            upgraded: false,
+            upgraded: Cell::new(false),
             client,
-            outsider_openness: Default::default(),
+            outsiders_openness: Default::default(),
             activities: Default::default(),
             schedulings: Default::default(),
             events: Default::default(),
@@ -364,7 +365,7 @@ impl nmodels::WeakGroup {
 }
 
 impl nmodels::Group {
-    #[allow(unused)]
+    #[allow(unused_must_use)]
     pub(crate) fn link(&self, client: Arc<Supernova>) -> models::Group {
         let group = models::Group {
             id: self.id,
@@ -374,14 +375,14 @@ impl nmodels::Group {
             thumb: self.thumb.clone(),
             group_type: self.group_type.into(),
             official: self.official,
-            upgraded: false,
+            upgraded: Cell::new(true),
             client: client.clone(),
-            outsider_openness: Default::default(),
+            outsiders_openness: Default::default(),
             activities: Default::default(),
             schedulings: Default::default(),
             events: Default::default(),
         };
-        group.outsider_openness.set(self.outsider_openness.into());
+        group.outsiders_openness.set(self.outsiders_openness.into());
         group.activities.set(
             self.activities
                 .iter()
@@ -403,7 +404,6 @@ impl nmodels::Group {
         group
     }
 }
-
 impl nmodels::GroupActivity {
     pub(crate) fn link(&self, client: Arc<Supernova>) -> models::GroupActivity {
         match self {
@@ -426,9 +426,7 @@ impl nmodels::Event {
             id: self.id,
             title: self.title.clone(),
             description: self.description.clone(),
-            weekday: self.weekday.into(),
             start_date: self.start_date.clone(),
-            end_date: self.end_date.clone(),
             duration: self.duration.clone(),
             place: self
                 .place
@@ -472,6 +470,7 @@ impl nmodels::GalleryUpload {
 }
 
 impl nmodels::GalleryItem {
+    #[allow(dead_code)]
     pub(crate) fn to_model(&self) -> models::GalleryItem {
         // TODO
         models::GalleryItem {}
@@ -509,7 +508,6 @@ impl nmodels::GroupSchedulingPeriodic {
             weekday: self.weekday.into(),
             start_date: self.start_date,
             end_date: self.end_date,
-            item: self.item.to_model(),
             duration: self.duration,
             revoked: self.revoked,
         }

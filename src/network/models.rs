@@ -1,6 +1,6 @@
 use crate::keys::*;
 use crate::ShiftKey;
-use chrono::{Date, DateTime, Utc};
+use chrono::{DateTime, NaiveDate, Utc};
 use serde::{Deserialize, Serialize};
 use serde_repr::Deserialize_repr;
 
@@ -482,10 +482,11 @@ pub(crate) struct Group {
     pub(crate) id: GroupKey,
     pub(crate) name: String,
     pub(crate) abbreviation: String,
+    #[serde(rename = "type")]
+    pub(crate) group_type: GroupType,
     pub(crate) url: String,
     pub(crate) thumb: Option<String>,
-    pub(crate) group_type: GroupType,
-    pub(crate) outsider_openness: GroupVisibility,
+    pub(crate) outsiders_openness: GroupVisibility,
     pub(crate) official: bool,
 
     pub(crate) activities: Vec<GroupActivity>,
@@ -542,14 +543,12 @@ pub(crate) struct GroupSchedulingOnce {
 }
 
 #[derive(Deserialize, Debug, PartialEq, Clone)]
+#[allow(dead_code)]
 pub(crate) struct GroupSchedulingPeriodic {
     pub(crate) title: Option<String>,
     pub(crate) weekday: Weekday,
-    #[serde(with = "upstream_date_format")]
-    pub(crate) start_date: Date<Utc>,
-    #[serde(with = "upstream_date_format")]
-    pub(crate) end_date: Date<Utc>,
-    pub(crate) item: GalleryItem,
+    pub(crate) start_date: NaiveDate,
+    pub(crate) end_date: NaiveDate,
     pub(crate) duration: u16,
     pub(crate) revoked: bool,
 }
@@ -559,12 +558,7 @@ pub(crate) struct Event {
     pub(crate) id: EventKey,
     pub(crate) title: String,
     pub(crate) description: String,
-    pub(crate) weekday: Weekday,
-    #[serde(with = "upstream_date_format")]
-    pub(crate) start_date: Date<Utc>,
-    #[serde(with = "upstream_date_format")]
-    pub(crate) end_date: Date<Utc>,
-    pub(crate) item: GalleryItem,
+    pub(crate) start_date: NaiveDate,
     pub(crate) duration: Option<u16>,
     pub(crate) place: Option<PlaceKey>,
     pub(crate) capacity: Option<u32>,
@@ -591,22 +585,4 @@ pub(crate) struct NewsItem {
     pub(crate) datetime: DateTime<Utc>,
     pub(crate) thumb: Option<String>,
     pub(crate) url: String,
-}
-
-mod upstream_date_format {
-    use chrono::{Date, TimeZone, Utc};
-    use serde::{self, Deserialize, Deserializer};
-
-    const FORMAT: &'static str = "%Y-%m-%d";
-
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<Date<Utc>, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let s = String::deserialize(deserializer)?;
-        let datetime = Utc
-            .datetime_from_str(&s, FORMAT)
-            .map_err(serde::de::Error::custom)?;
-        Ok(datetime.date())
-    }
 }

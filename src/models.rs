@@ -1,6 +1,8 @@
 use crate::coersion::ObjRef;
-use chrono::{Date, DateTime, Utc};
+use chrono::{DateTime, NaiveDate, Utc};
 use once_cell::sync::OnceCell;
+use std::cell::Cell;
+use std::fmt;
 use std::sync::Arc;
 
 use crate::errors::Error;
@@ -526,6 +528,7 @@ pub enum GroupEventType {
     Meeting,
 }
 
+#[derive(Clone)]
 pub struct Group {
     pub id: GroupKey,
     pub name: String,
@@ -534,10 +537,10 @@ pub struct Group {
     pub thumb: Option<String>,
     pub group_type: GroupType,
     pub official: bool,
-    pub(crate) upgraded: bool,
+    pub(crate) upgraded: Cell<bool>,
 
     pub(crate) client: Arc<Supernova>,
-    pub(crate) outsider_openness: OnceCell<GroupVisibility>,
+    pub(crate) outsiders_openness: OnceCell<GroupVisibility>,
     pub(crate) activities: OnceCell<Vec<GroupActivity>>,
     pub(crate) schedulings: OnceCell<Vec<GroupScheduling>>,
     pub(crate) events: OnceCell<Vec<Event>>,
@@ -546,7 +549,7 @@ pub struct Group {
 impl Group {
     pub fn outsider_openness(&self) -> Result<GroupVisibility, Error> {
         self.upgrade()?;
-        Ok(*self.outsider_openness.get().unwrap())
+        Ok(*self.outsiders_openness.get().unwrap())
     }
 
     pub fn activities(&self) -> Result<&[GroupActivity], Error> {
@@ -566,15 +569,16 @@ impl Group {
 
     #[allow(unused)]
     pub fn upgrade(&self) -> Result<(), Error> {
-        if !self.upgraded {
+        if !self.upgraded.get() {
             let group = self.client.get_group(self.id)?;
 
-            self.outsider_openness
-                .set(*group.outsider_openness.get().unwrap());
+            self.outsiders_openness
+                .set(*group.outsiders_openness.get().unwrap());
             self.activities.set(group.activities.get().unwrap().clone());
             self.schedulings
                 .set(group.schedulings.get().unwrap().clone());
             self.events.set(group.events.get().unwrap().clone());
+            self.upgraded.set(true)
         }
         Ok(())
     }
@@ -583,6 +587,21 @@ impl Group {
 impl PartialEq for Group {
     fn eq(&self, other: &Self) -> bool {
         self.id.eq(&other.id)
+    }
+}
+
+impl fmt::Debug for Group {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Group")
+            .field("id", &self.id)
+            .field("name", &self.name)
+            .field("abbreviation", &self.abbreviation)
+            .field("url", &self.url)
+            .field("thumb", &self.thumb)
+            .field("type", &self.group_type)
+            .field("official", &self.official)
+            .field("upgraded", &self.upgraded)
+            .finish()
     }
 }
 
@@ -657,9 +676,8 @@ pub struct GroupSchedulingOnce {
 pub struct GroupSchedulingPeriodic {
     pub title: Option<String>,
     pub weekday: Weekday,
-    pub start_date: Date<Utc>,
-    pub end_date: Date<Utc>,
-    pub item: GalleryItem,
+    pub start_date: NaiveDate,
+    pub end_date: NaiveDate,
     pub duration: u16,
     pub revoked: bool,
 }
@@ -669,9 +687,7 @@ pub struct Event {
     pub id: EventKey,
     pub title: String,
     pub description: String,
-    pub weekday: Weekday,
-    pub start_date: Date<Utc>,
-    pub end_date: Date<Utc>,
+    pub start_date: NaiveDate,
     pub duration: Option<u16>,
     pub(crate) place: Option<ObjRef<Place, PlaceKey>>,
     pub capacity: Option<u32>,

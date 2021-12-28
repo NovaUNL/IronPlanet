@@ -80,7 +80,7 @@ impl fmt::Display for Endpoint {
             //     f.write_fmt(format_args!("class/i/{}/schedule", id))
             // }
             Endpoint::Groups => f.write_str("groups"),
-            Endpoint::Group(id) => f.write_fmt(format_args!("group/{}", id)),
+            Endpoint::Group(id) => f.write_fmt(format_args!("group/{}/", id)),
 
             Endpoint::NewsItemPage((limit, offset)) => {
                 f.write_fmt(format_args!("news/?limit={}&offset={}", limit, offset))
