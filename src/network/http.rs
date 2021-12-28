@@ -27,13 +27,12 @@ impl HTTPClient {
             request.call()
         }
         .map_err(|e| match e.kind() {
-            ErrorKind::InvalidUrl | ErrorKind::UnknownScheme | ErrorKind::Io | ErrorKind::HTTP => {
-                Error::Client
-            }
+            ErrorKind::InvalidUrl | ErrorKind::UnknownScheme | ErrorKind::Io => Error::Client,
             ErrorKind::ConnectionFailed
             | ErrorKind::TooManyRedirects
             | ErrorKind::BadStatus
-            | ErrorKind::BadHeader => Error::Server,
+            | ErrorKind::BadHeader
+            | ErrorKind::HTTP => Error::Server,
             ErrorKind::Dns
             | ErrorKind::InvalidProxyUrl
             | ErrorKind::ProxyConnect

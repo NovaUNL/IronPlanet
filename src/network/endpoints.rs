@@ -98,7 +98,7 @@ impl BaseSupernova {
         let request = RequestBuilder::new(url).build();
         let json_str = http.send(request)?;
 
-        serde_json::from_str(&json_str).map_err(|_| Error::Parsing(json_str.to_string()))
+        serde_json::from_str(&json_str).map_err(|e| Error::Parsing(e, json_str.to_string()))
     }
 
     #[allow(clippy::unused_self)]
@@ -113,7 +113,7 @@ impl BaseSupernova {
             .build();
         let json_str = http.send(request)?;
 
-        serde_json::from_str(&json_str).map_err(|_| Error::Parsing(json_str.to_string()))
+        serde_json::from_str(&json_str).map_err(|e| Error::Parsing(e, json_str.to_string()))
     }
 
     #[allow(clippy::unused_self)]
@@ -257,7 +257,7 @@ impl AuthenticatedSupernova {
         };
 
         let json_str = http.send(request)?;
-        serde_json::from_str(&json_str).map_err(|_| Error::Parsing(json_str.to_string()))
+        serde_json::from_str(&json_str).map_err(|e| Error::Parsing(e, json_str.to_string()))
     }
 
     pub(crate) fn logout(&self, http: &HTTPClient) -> Result<nmodels::TokenResult, Error> {
@@ -275,7 +275,7 @@ impl AuthenticatedSupernova {
         };
         let json_str = http.send(request)?;
 
-        serde_json::from_str(&json_str).map_err(|_| Error::Parsing(json_str.to_string()))
+        serde_json::from_str(&json_str).map_err(|e| Error::Parsing(e, json_str.to_string()))
     }
 
     pub(crate) fn fetch_class_instance(

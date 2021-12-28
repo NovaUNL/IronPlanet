@@ -11,7 +11,7 @@ pub enum Error {
     #[error("Failed to decode the received message")]
     Decode,
     #[error("Received a message that didn't match the expected format:\n{0}")]
-    Parsing(String),
+    Parsing(serde_json::Error, String),
     #[error("A resource is missing on the server")]
     ResourceMissing,
     #[error("Attempted to access a protected resource without providing credentials")]
