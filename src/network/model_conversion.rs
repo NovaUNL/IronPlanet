@@ -356,17 +356,17 @@ impl nmodels::WeakGroup {
             official: self.official,
             upgraded: Cell::new(false),
             client,
-            outsiders_openness: Default::default(),
-            activities: Default::default(),
-            schedulings: Default::default(),
-            events: Default::default(),
+            outsiders_openness: once_cell::sync::OnceCell::default(),
+            activities: once_cell::sync::OnceCell::default(),
+            schedulings: once_cell::sync::OnceCell::default(),
+            events: once_cell::sync::OnceCell::default(),
         }
     }
 }
 
 impl nmodels::Group {
     #[allow(unused_must_use)]
-    pub(crate) fn link(&self, client: Arc<Supernova>) -> models::Group {
+    pub(crate) fn link(&self, client: &Arc<Supernova>) -> models::Group {
         let group = models::Group {
             id: self.id,
             name: self.name.clone(),
@@ -377,10 +377,10 @@ impl nmodels::Group {
             official: self.official,
             upgraded: Cell::new(true),
             client: client.clone(),
-            outsiders_openness: Default::default(),
-            activities: Default::default(),
-            schedulings: Default::default(),
-            events: Default::default(),
+            outsiders_openness: once_cell::sync::OnceCell::default(),
+            activities: once_cell::sync::OnceCell::default(),
+            schedulings: once_cell::sync::OnceCell::default(),
+            events: once_cell::sync::OnceCell::default(),
         };
         group.outsiders_openness.set(self.outsiders_openness.into());
         group.activities.set(
@@ -392,7 +392,7 @@ impl nmodels::Group {
         group.schedulings.set(
             self.schedule_entries
                 .iter()
-                .map(|scheduling| scheduling.to_model())
+                .map(nmodels::GroupScheduling::to_model)
                 .collect(),
         );
         group.events.set(
@@ -426,13 +426,13 @@ impl nmodels::Event {
             id: self.id,
             title: self.title.clone(),
             description: self.description.clone(),
-            start_date: self.start_date.clone(),
-            duration: self.duration.clone(),
+            start_date: self.start_date,
+            duration: self.duration,
             place: self
                 .place
-                .map(|key| ObjRef::<models::Place, PlaceKey>::new(key, client.clone())),
-            capacity: self.capacity.clone(),
-            cost: self.cost.clone(),
+                .map(|key| ObjRef::<models::Place, PlaceKey>::new(key, client)),
+            capacity: self.capacity,
+            cost: self.cost,
             event_type: self.event_type.into(),
         }
     }
@@ -521,7 +521,7 @@ impl nmodels::EventsPage {
         key: EventsPageKey,
     ) -> Arc<models::EventsPage> {
         let (limit, offset) = key;
-        let next_page_key = (limit, offset + limit as u32);
+        let next_page_key = (limit, offset + u32::from(limit));
         Arc::new(models::EventsPage {
             previous_page: None,
             next_page: ObjRef::<Option<Arc<models::EventsPage>>, EventsPageKey>::new(
@@ -580,7 +580,7 @@ impl From<nmodels::GroupEventType> for models::GroupEventType {
 impl nmodels::NewsPage {
     pub(crate) fn link(&self, client: &Arc<Supernova>, key: NewsPageKey) -> Arc<models::NewsPage> {
         let (limit, offset) = key;
-        let next_page_key = (limit, offset + limit as u32);
+        let next_page_key = (limit, offset + u32::from(limit));
         Arc::new(models::NewsPage {
             previous_page: None,
             next_page: ObjRef::<Option<Arc<models::NewsPage>>, NewsPageKey>::new(
@@ -602,7 +602,7 @@ impl nmodels::NewsItem {
             id: self.id,
             title: self.title.to_string(),
             summary: self.summary.to_string(),
-            datetime: self.datetime.clone(),
+            datetime: self.datetime,
             thumb: self.thumb.clone(),
             url: self.url.clone(),
         }

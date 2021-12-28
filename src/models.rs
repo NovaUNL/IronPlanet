@@ -578,7 +578,7 @@ impl Group {
             self.schedulings
                 .set(group.schedulings.get().unwrap().clone());
             self.events.set(group.events.get().unwrap().clone());
-            self.upgraded.set(true)
+            self.upgraded.set(true);
         }
         Ok(())
     }
@@ -713,16 +713,18 @@ pub struct EventsPage {
 }
 
 impl EventsPage {
+    #[must_use]
     pub fn items(&self) -> &[Arc<Event>] {
         self.items.as_slice()
     }
 
+    #[must_use]
     pub fn predecessor(&self) -> Option<Arc<EventsPage>> {
         self.previous_page.clone()
     }
 
     pub fn successor(&self) -> Result<Option<Arc<EventsPage>>, Error> {
-        Ok(self.next_page.coerce()?)
+        self.next_page.coerce()
     }
 }
 
@@ -736,16 +738,18 @@ pub struct NewsPage {
 }
 
 impl NewsPage {
+    #[must_use]
     pub fn items(&self) -> &[Arc<NewsItem>] {
         self.items.as_slice()
     }
 
+    #[must_use]
     pub fn predecessor(&self) -> Option<Arc<NewsPage>> {
         self.previous_page.clone()
     }
 
     pub fn successor(&self) -> Result<Option<Arc<NewsPage>>, Error> {
-        Ok(self.next_page.coerce()?)
+        self.next_page.coerce()
     }
 }
 

@@ -503,7 +503,7 @@ impl Supernova {
 
     pub fn get_group(self: &Arc<Supernova>, id: keys::GroupKey) -> Result<models::Group, Error> {
         let net_group = self.base.fetch_group(&self.http_client, id)?;
-        Ok(net_group.link(self.clone()))
+        Ok(net_group.link(self))
     }
 
     pub fn get_events_front_page(
