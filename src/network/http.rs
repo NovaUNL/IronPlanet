@@ -1,6 +1,7 @@
 use crate::errors::Error;
+use serde_json::Value;
 use std::collections::HashMap;
-use ureq::{ErrorKind, SerdeValue};
+use ureq::ErrorKind;
 
 #[derive(Default)]
 pub(crate) struct HTTPClient;
@@ -54,7 +55,7 @@ pub(crate) struct RequestBuilder<'a> {
     url: &'a str,
     headers: HashMap<String, String>,
     method: Method,
-    body: Option<SerdeValue>,
+    body: Option<Value>,
 }
 
 impl<'a> RequestBuilder<'a> {
@@ -77,7 +78,7 @@ impl<'a> RequestBuilder<'a> {
         self
     }
 
-    pub(crate) fn set_body(&mut self, value: SerdeValue) -> &mut RequestBuilder<'a> {
+    pub(crate) fn set_body(&mut self, value: Value) -> &mut RequestBuilder<'a> {
         self.body = Some(value);
         self
     }
@@ -96,7 +97,7 @@ pub(crate) struct Request {
     url: String,
     headers: HashMap<String, String>,
     method: Method,
-    body: Option<SerdeValue>,
+    body: Option<Value>,
 }
 
 #[derive(Copy, Clone)]
