@@ -567,6 +567,14 @@ pub(crate) struct Event {
     pub(crate) event_type: GroupEventType,
 }
 
+#[derive(Deserialize, Debug, PartialEq, Clone)]
+pub(crate) struct EventsPage {
+    pub(crate) count: u32,
+    pub(crate) next: Option<String>,
+    pub(crate) previous: Option<String>,
+    pub(crate) results: Vec<Event>,
+}
+
 // ------------ News --------------
 
 #[derive(Deserialize, Debug, PartialEq, Clone)]

@@ -705,6 +705,27 @@ impl Event {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct EventsPage {
+    pub(crate) previous_page: Option<Arc<EventsPage>>,
+    pub(crate) next_page: ObjRef<Option<Arc<EventsPage>>, EventsPageKey>,
+    pub(crate) items: Vec<Arc<Event>>,
+}
+
+impl EventsPage {
+    pub fn items(&self) -> &[Arc<Event>] {
+        self.items.as_slice()
+    }
+
+    pub fn predecessor(&self) -> Option<Arc<EventsPage>> {
+        self.previous_page.clone()
+    }
+
+    pub fn successor(&self) -> Result<Option<Arc<EventsPage>>, Error> {
+        Ok(self.next_page.coerce()?)
+    }
+}
+
 // ------------ News --------------
 
 #[derive(Debug, Clone)]

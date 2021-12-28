@@ -150,6 +150,11 @@ impl CoersibleEntity<EventKey> for Event {
 
 impl ObjRef<Event, EventKey> {}
 
+impl CoersibleEntity<EventsPageKey> for Option<Arc<EventsPage>> {
+    fn coerce(id: &EventsPageKey, client: Arc<Supernova>) -> Result<Self, Error> {
+        client.get_events_page(*id, &RequestConfig::default())
+    }
+}
 // ------------ News --------------
 
 impl CoersibleEntity<NewsPageKey> for Option<Arc<NewsPage>> {

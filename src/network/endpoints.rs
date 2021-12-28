@@ -49,6 +49,7 @@ pub enum Endpoint {
 
     Groups,
     Group(GroupKey),
+    EventsPage(EventsPageKey),
 
     NewsItemPage(NewsPageKey),
 }
@@ -81,10 +82,13 @@ impl fmt::Display for Endpoint {
             // }
             Endpoint::Groups => f.write_str("groups"),
             Endpoint::Group(id) => f.write_fmt(format_args!("group/{}/", id)),
+            Endpoint::EventsPage((limit, offset)) => {
+                f.write_fmt(format_args!("events/?limit={}&offset={}", limit, offset))
+            }
 
             Endpoint::NewsItemPage((limit, offset)) => {
                 f.write_fmt(format_args!("news/?limit={}&offset={}", limit, offset))
-            } // _ => todo!(),
+            }
         }
     }
 }
@@ -208,6 +212,15 @@ impl BaseSupernova {
         key: GroupKey,
     ) -> Result<nmodels::Group, Error> {
         let endpoint = Endpoint::Group(key);
+        self.generic_fetch(http, &endpoint.to_string())
+    }
+
+    pub(crate) fn fetch_events(
+        &self,
+        http: &HTTPClient,
+        key: keys::EventsPageKey,
+    ) -> Result<nmodels::EventsPage, Error> {
+        let endpoint = Endpoint::EventsPage(key);
         self.generic_fetch(http, &endpoint.to_string())
     }
 

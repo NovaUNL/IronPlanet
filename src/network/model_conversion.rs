@@ -514,6 +514,29 @@ impl nmodels::GroupSchedulingPeriodic {
     }
 }
 
+impl nmodels::EventsPage {
+    pub(crate) fn link(
+        &self,
+        client: &Arc<Supernova>,
+        key: EventsPageKey,
+    ) -> Arc<models::EventsPage> {
+        let (limit, offset) = key;
+        let next_page_key = (limit, offset + limit as u32);
+        Arc::new(models::EventsPage {
+            previous_page: None,
+            next_page: ObjRef::<Option<Arc<models::EventsPage>>, EventsPageKey>::new(
+                next_page_key,
+                client.clone(),
+            ),
+            items: self
+                .results
+                .iter()
+                .map(|item| Arc::new(item.link(client.clone())))
+                .collect(),
+        })
+    }
+}
+
 impl From<nmodels::GroupType> for models::GroupType {
     fn from(gtype: nmodels::GroupType) -> Self {
         match gtype {

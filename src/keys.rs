@@ -19,4 +19,5 @@ pub type PlaceFeatureKey = u32;
 pub type NewsPageKey = (u16, u32);
 pub type NewsItemKey = u32;
 
+pub type EventsPageKey = (u16, u32);
 pub type EventKey = u32;

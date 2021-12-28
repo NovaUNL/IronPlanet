@@ -466,27 +466,6 @@ impl Supernova {
         Ok(shift)
     }
 
-    pub fn get_news_front_page(
-        self: &Arc<Supernova>,
-        conf: &RequestConfig,
-    ) -> Result<Option<Arc<models::NewsPage>>, Error> {
-        let key = (DEFAULT_PAGE_ITEM_LIMIT, 0);
-        self.get_news_page(key, conf)
-    }
-
-    pub fn get_news_page(
-        self: &Arc<Supernova>,
-        key: NewsPageKey,
-        _conf: &RequestConfig,
-    ) -> Result<Option<Arc<models::NewsPage>>, Error> {
-        let net_news_page = self.base.fetch_news(&self.http_client, key)?;
-        if net_news_page.results.is_empty() {
-            Ok(None)
-        } else {
-            Ok(Some(net_news_page.link(&self.clone(), key)))
-        }
-    }
-
     pub fn get_groups(
         self: &Arc<Supernova>,
         conf: &RequestConfig,
@@ -525,6 +504,48 @@ impl Supernova {
     pub fn get_group(self: &Arc<Supernova>, id: keys::GroupKey) -> Result<models::Group, Error> {
         let net_group = self.base.fetch_group(&self.http_client, id)?;
         Ok(net_group.link(self.clone()))
+    }
+
+    pub fn get_events_front_page(
+        self: &Arc<Supernova>,
+        conf: &RequestConfig,
+    ) -> Result<Option<Arc<models::EventsPage>>, Error> {
+        let key = (DEFAULT_PAGE_ITEM_LIMIT, 0);
+        self.get_events_page(key, conf)
+    }
+
+    pub fn get_events_page(
+        self: &Arc<Supernova>,
+        key: EventsPageKey,
+        _conf: &RequestConfig,
+    ) -> Result<Option<Arc<models::EventsPage>>, Error> {
+        let net_events_page = self.base.fetch_events(&self.http_client, key)?;
+        if net_events_page.results.is_empty() {
+            Ok(None)
+        } else {
+            Ok(Some(net_events_page.link(&self.clone(), key)))
+        }
+    }
+
+    pub fn get_news_front_page(
+        self: &Arc<Supernova>,
+        conf: &RequestConfig,
+    ) -> Result<Option<Arc<models::NewsPage>>, Error> {
+        let key = (DEFAULT_PAGE_ITEM_LIMIT, 0);
+        self.get_news_page(key, conf)
+    }
+
+    pub fn get_news_page(
+        self: &Arc<Supernova>,
+        key: NewsPageKey,
+        _conf: &RequestConfig,
+    ) -> Result<Option<Arc<models::NewsPage>>, Error> {
+        let net_news_page = self.base.fetch_news(&self.http_client, key)?;
+        if net_news_page.results.is_empty() {
+            Ok(None)
+        } else {
+            Ok(Some(net_news_page.link(&self.clone(), key)))
+        }
     }
 
     pub fn warmup(self: &Arc<Supernova>) -> Result<(), Error> {
