@@ -107,7 +107,12 @@ impl BaseSupernova {
 
     #[allow(clippy::unused_self)]
     pub(crate) fn fetch_bytes(&self, http: &HTTPClient, url: &str) -> Result<Vec<u8>, Error> {
-        let request = RequestBuilder::new(url).build();
+        let request = if url.starts_with("/") {
+            let url = format!("{}{}", *UPSTREAM, url);
+            RequestBuilder::new(&url).build()
+        } else {
+            RequestBuilder::new(url).build()
+        };
         http.fetch_bytes(request)
     }
 
@@ -282,12 +287,23 @@ impl AuthenticatedSupernova {
     #[allow(clippy::unused_self)]
     pub(crate) fn fetch_bytes(&self, http: &HTTPClient, url: &str) -> Result<Vec<u8>, Error> {
         if let Some(credentials) = self.credentials.lock().unwrap().borrow().as_ref() {
-            let request = RequestBuilder::new(url)
-                .add_header(
-                    "Authorization".to_string(),
-                    format!("Token {}", credentials),
-                )
-                .build();
+            let request = if url.starts_with("/") {
+                let url = format!("{}{}", *UPSTREAM, url);
+                RequestBuilder::new(&url)
+                    .add_header(
+                        "Authorization".to_string(),
+                        format!("Token {}", credentials),
+                    )
+                    .build()
+            } else {
+                RequestBuilder::new(url)
+                    .add_header(
+                        "Authorization".to_string(),
+                        format!("Token {}", credentials),
+                    )
+                    .build()
+            };
+
             http.fetch_bytes(request)
         } else {
             Err(Error::MissingAuthentication)
