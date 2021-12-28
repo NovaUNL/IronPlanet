@@ -567,6 +567,19 @@ impl Group {
         Ok(self.events.get().unwrap().as_slice())
     }
 
+    #[must_use]
+    pub fn thumb_bytes(&self) -> Option<Result<Vec<u8>, Error>> {
+        if let Some(thumb_url) = &self.thumb {
+            Some(
+                self.client
+                    .base
+                    .fetch_bytes(&self.client.http_client, thumb_url),
+            )
+        } else {
+            None
+        }
+    }
+
     #[allow(unused)]
     pub fn upgrade(&self) -> Result<(), Error> {
         if !self.upgraded.get() {
@@ -753,7 +766,7 @@ impl NewsPage {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct NewsItem {
     pub id: NewsItemKey,
     pub title: String,
@@ -761,10 +774,40 @@ pub struct NewsItem {
     pub datetime: DateTime<Utc>,
     pub thumb: Option<String>,
     pub url: String,
+
+    pub(crate) client: Arc<Supernova>,
+}
+
+impl NewsItem {
+    #[must_use]
+    pub fn thumb_bytes(&self) -> Option<Result<Vec<u8>, Error>> {
+        if let Some(thumb_url) = &self.thumb {
+            Some(
+                self.client
+                    .base
+                    .fetch_bytes(&self.client.http_client, thumb_url),
+            )
+        } else {
+            None
+        }
+    }
 }
 
 impl PartialEq for NewsItem {
     fn eq(&self, other: &Self) -> bool {
         self.id.eq(&other.id)
+    }
+}
+
+impl fmt::Debug for NewsItem {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("NewsItem")
+            .field("id", &self.id)
+            .field("title", &self.title)
+            .field("summary", &self.summary)
+            .field("datetime", &self.datetime)
+            .field("thumb", &self.thumb)
+            .field("url", &self.url)
+            .finish()
     }
 }

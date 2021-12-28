@@ -590,14 +590,14 @@ impl nmodels::NewsPage {
             items: self
                 .results
                 .iter()
-                .map(|item| Arc::new(item.to_model()))
+                .map(|item| Arc::new(item.link(client.clone())))
                 .collect(),
         })
     }
 }
 
 impl nmodels::NewsItem {
-    pub(crate) fn to_model(&self) -> models::NewsItem {
+    pub(crate) fn link(&self, client: Arc<Supernova>) -> models::NewsItem {
         models::NewsItem {
             id: self.id,
             title: self.title.to_string(),
@@ -605,6 +605,7 @@ impl nmodels::NewsItem {
             datetime: self.datetime,
             thumb: self.thumb.clone(),
             url: self.url.clone(),
+            client,
         }
     }
 }
