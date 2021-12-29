@@ -298,6 +298,7 @@ pub struct Teacher {
     pub url: String,
 
     pub(crate) client: Arc<Supernova>,
+    pub(crate) thumb_cache: OnceCell<Vec<u8>>,
 }
 
 #[derive(Debug, Clone)]
@@ -597,11 +598,18 @@ impl Teacher {
     #[must_use]
     pub fn thumb_bytes(&self) -> Option<Result<Vec<u8>, Error>> {
         if let Some(thumb_url) = &self.thumb {
-            Some(
-                self.client
+            Some(if let Some(bytes) = self.thumb_cache.get() {
+                Ok(bytes.clone())
+            } else {
+                let response = self
+                    .client
                     .base
-                    .fetch_bytes(&self.client.http_client, thumb_url),
-            )
+                    .fetch_bytes(&self.client.http_client, thumb_url);
+                if let Ok(bytes) = &response {
+                    let _ = self.thumb_cache.set(bytes.clone());
+                }
+                response
+            })
         } else {
             None
         }
@@ -798,6 +806,7 @@ pub struct Group {
     pub(crate) activities: OnceCell<Vec<GroupActivity>>,
     pub(crate) schedulings: OnceCell<Vec<GroupScheduling>>,
     pub(crate) events: OnceCell<Vec<Event>>,
+    pub(crate) thumb_cache: OnceCell<Vec<u8>>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -911,11 +920,18 @@ impl Group {
     #[must_use]
     pub fn thumb_bytes(&self) -> Option<Result<Vec<u8>, Error>> {
         if let Some(thumb_url) = &self.thumb {
-            Some(
-                self.client
+            Some(if let Some(bytes) = self.thumb_cache.get() {
+                Ok(bytes.clone())
+            } else {
+                let response = self
+                    .client
                     .base
-                    .fetch_bytes(&self.client.http_client, thumb_url),
-            )
+                    .fetch_bytes(&self.client.http_client, thumb_url);
+                if let Ok(bytes) = &response {
+                    let _ = self.thumb_cache.set(bytes.clone());
+                }
+                response
+            })
         } else {
             None
         }
@@ -1096,6 +1112,7 @@ pub struct NewsItem {
     pub url: String,
 
     pub(crate) client: Arc<Supernova>,
+    pub(crate) thumb_cache: OnceCell<Vec<u8>>,
 }
 
 impl NewsPage {
@@ -1118,11 +1135,18 @@ impl NewsItem {
     #[must_use]
     pub fn thumb_bytes(&self) -> Option<Result<Vec<u8>, Error>> {
         if let Some(thumb_url) = &self.thumb {
-            Some(
-                self.client
+            Some(if let Some(bytes) = self.thumb_cache.get() {
+                Ok(bytes.clone())
+            } else {
+                let response = self
+                    .client
                     .base
-                    .fetch_bytes(&self.client.http_client, thumb_url),
-            )
+                    .fetch_bytes(&self.client.http_client, thumb_url);
+                if let Ok(bytes) = &response {
+                    let _ = self.thumb_cache.set(bytes.clone());
+                }
+                response
+            })
         } else {
             None
         }

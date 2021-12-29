@@ -188,6 +188,7 @@ impl nmodels::Teacher {
                 .collect(),
             url: format!("{}{}", *UPSTREAM, self.url),
             client,
+            thumb_cache: once_cell::sync::OnceCell::default(),
         }
     }
 }
@@ -367,6 +368,7 @@ impl nmodels::WeakGroup {
             activities: once_cell::sync::OnceCell::default(),
             schedulings: once_cell::sync::OnceCell::default(),
             events: once_cell::sync::OnceCell::default(),
+            thumb_cache: once_cell::sync::OnceCell::default(),
         }
     }
 }
@@ -391,6 +393,7 @@ impl nmodels::Group {
             activities: once_cell::sync::OnceCell::default(),
             schedulings: once_cell::sync::OnceCell::default(),
             events: once_cell::sync::OnceCell::default(),
+            thumb_cache: once_cell::sync::OnceCell::default(),
         };
         group.outsiders_openness.set(self.outsiders_openness.into());
         group.activities.set(
@@ -620,6 +623,7 @@ impl nmodels::NewsItem {
                 .map(|url| format!("{}{}", *UPSTREAM, url)),
             url: format!("{}{}", *UPSTREAM, self.url),
             client,
+            thumb_cache: once_cell::sync::OnceCell::default(),
         }
     }
 }
