@@ -1,8 +1,10 @@
 use crate::coersion::ObjRef;
-use chrono::{DateTime, NaiveDate, Utc};
+use chrono::{DateTime, NaiveDate, NaiveTime, Utc};
 use once_cell::sync::OnceCell;
 use std::cell::Cell;
+use std::cmp::Ordering;
 use std::fmt;
+use std::hash::{Hash, Hasher};
 use std::sync::Arc;
 
 use crate::errors::Error;
@@ -10,7 +12,7 @@ use crate::keys::*;
 pub use crate::network::models::{ClassInfo, ClassInfoEntry, ClassInfoSources};
 use crate::Supernova;
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Ord, PartialOrd)]
 pub enum Weekday {
     Monday,
     Thursday,
@@ -21,7 +23,7 @@ pub enum Weekday {
     Sunday,
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Ord, PartialOrd)]
 pub enum Period {
     Year,
     FirstSemester,
@@ -32,7 +34,7 @@ pub enum Period {
     FourthTrimester,
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Ord, PartialOrd)]
 pub enum Degree {
     BSc,
     MSc,
@@ -43,7 +45,7 @@ pub enum Degree {
     PreGraduation,
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Ord, PartialOrd)]
 pub enum ShiftType {
     Theoretical,
     Practical,
@@ -56,7 +58,7 @@ pub enum ShiftType {
     OnlinePracticalTheoretical,
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Ord, PartialOrd)]
 pub enum FileCategory {
     Image,
     Slides,
@@ -69,7 +71,7 @@ pub enum FileCategory {
     Others,
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Ord, PartialOrd)]
 pub enum FileLicense {
     RightsReserved,
     PublicDomain,
@@ -83,7 +85,7 @@ pub enum FileLicense {
     GenericPermissive,
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Ord, PartialOrd)]
 pub enum FileVisibility {
     Public,
     Students,
@@ -91,14 +93,14 @@ pub enum FileVisibility {
     Nobody,
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Ord, PartialOrd)]
 pub enum Season {
     Normal,
     Exam,
     Special,
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Ord, PartialOrd)]
 pub enum ClassEventType {
     Test,
     Exam,
@@ -112,7 +114,7 @@ pub enum ClassEventType {
     Talk,
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Ord, PartialOrd)]
 pub enum RoomType {
     Generic,
     Classroom,
@@ -250,7 +252,7 @@ pub struct ClassInstanceFile {
     pub file: File,
     pub name: String,
     pub category: FileCategory,
-    pub upload_datetime: String,
+    pub upload_datetime: String, // FIXME use chrono
     pub uploader: Option<u32>,
     pub uploader_teacher: Option<u32>,
     pub url: String,
@@ -333,6 +335,24 @@ impl Department {
     }
 }
 
+impl PartialEq for Department {
+    fn eq(&self, other: &Self) -> bool {
+        self.id.eq(&other.id)
+    }
+}
+
+impl PartialOrd for Department {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        self.name.partial_cmp(&other.name)
+    }
+}
+
+impl Hash for Department {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.id.hash(state);
+    }
+}
+
 impl Building {
     pub fn get_rooms(&self) -> Result<Vec<Place>, Error> {
         let mut result = vec![];
@@ -343,6 +363,24 @@ impl Building {
     }
 }
 
+impl PartialEq for Building {
+    fn eq(&self, other: &Self) -> bool {
+        self.id.eq(&other.id)
+    }
+}
+
+impl PartialOrd for Building {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        self.name.partial_cmp(&other.name)
+    }
+}
+
+impl Hash for Building {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.id.hash(state);
+    }
+}
+
 impl Place {
     pub fn get_building(&self) -> Result<Option<Building>, Error> {
         Ok(if let Some(building) = &self.building {
@@ -350,6 +388,28 @@ impl Place {
         } else {
             None
         })
+    }
+}
+
+impl PartialEq for Place {
+    fn eq(&self, other: &Self) -> bool {
+        self.id.eq(&other.id)
+    }
+}
+
+impl PartialOrd for Place {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        let floor_ord = self.floor.cmp(&other.floor);
+        match floor_ord {
+            Ordering::Equal => self.name.partial_cmp(&other.name),
+            _ => Some(floor_ord),
+        }
+    }
+}
+
+impl Hash for Place {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.id.hash(state);
     }
 }
 
@@ -373,6 +433,24 @@ impl Course {
     }
 }
 
+impl PartialEq for Course {
+    fn eq(&self, other: &Self) -> bool {
+        self.id.eq(&other.id)
+    }
+}
+
+impl PartialOrd for Course {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        self.name.partial_cmp(&other.name)
+    }
+}
+
+impl Hash for Course {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.id.hash(state);
+    }
+}
+
 impl Class {
     pub fn get_department(&self) -> Result<Option<Department>, Error> {
         Ok(if let Some(department) = &self.department {
@@ -388,6 +466,24 @@ impl Class {
             result.push(instance_ref.coerce()?);
         }
         Ok(result)
+    }
+}
+
+impl PartialEq for Class {
+    fn eq(&self, other: &Self) -> bool {
+        self.id.eq(&other.id)
+    }
+}
+
+impl PartialOrd for Class {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        self.name.partial_cmp(&other.name)
+    }
+}
+
+impl Hash for Class {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.id.hash(state);
     }
 }
 
@@ -417,6 +513,24 @@ impl ClassInstance {
     }
 }
 
+impl PartialEq for ClassInstance {
+    fn eq(&self, other: &Self) -> bool {
+        self.id.eq(&other.id)
+    }
+}
+
+impl PartialOrd for ClassInstance {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        self.year.partial_cmp(&other.year)
+    }
+}
+
+impl Hash for ClassInstance {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.id.hash(state);
+    }
+}
+
 impl Student {
     pub fn get_course(&self) -> Result<Option<Course>, Error> {
         Ok(if let Some(course_ref) = &self.course {
@@ -443,6 +557,24 @@ impl Student {
     }
 }
 
+impl PartialEq for Student {
+    fn eq(&self, other: &Self) -> bool {
+        self.id.eq(&other.id)
+    }
+}
+
+impl PartialOrd for Student {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        self.number.partial_cmp(&other.number)
+    }
+}
+
+impl Hash for Student {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.id.hash(state);
+    }
+}
+
 impl Teacher {
     pub fn get_departments(&self) -> Result<Vec<Department>, Error> {
         let mut result = vec![];
@@ -458,6 +590,24 @@ impl Teacher {
             result.push(shift_ref.coerce()?);
         }
         Ok(result)
+    }
+}
+
+impl PartialEq for Teacher {
+    fn eq(&self, other: &Self) -> bool {
+        self.id.eq(&other.id)
+    }
+}
+
+impl PartialOrd for Teacher {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        self.name.partial_cmp(&other.name)
+    }
+}
+
+impl Hash for Teacher {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.id.hash(state);
     }
 }
 
@@ -480,6 +630,28 @@ impl ClassShift {
     }
 }
 
+impl PartialEq for ClassShift {
+    fn eq(&self, other: &Self) -> bool {
+        self.id.eq(&other.id)
+    }
+}
+
+impl PartialOrd for ClassShift {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        let type_ord = self.shift_type.cmp(&other.shift_type);
+        match type_ord {
+            Ordering::Equal => Some(type_ord),
+            _ => self.number.partial_cmp(&other.number),
+        }
+    }
+}
+
+impl Hash for ClassShift {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.id.hash(state);
+    }
+}
+
 impl ClassShiftInstance {
     pub fn get_place(&self) -> Result<Option<Place>, Error> {
         Ok(if let Some(room_ref) = &self.room {
@@ -487,6 +659,56 @@ impl ClassShiftInstance {
         } else {
             None
         })
+    }
+}
+
+impl PartialEq for ClassShiftInstance {
+    fn eq(&self, other: &Self) -> bool {
+        self.weekday.eq(&other.weekday)
+            && self.start.eq(&other.start)
+            && self.duration.eq(&other.duration)
+    }
+}
+
+impl PartialOrd for ClassShiftInstance {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        let weekday_ord = self.weekday.cmp(&other.weekday);
+        Some(match weekday_ord {
+            Ordering::Equal => weekday_ord,
+            _ => {
+                let start_ord = self.start.cmp(&other.start);
+                match start_ord {
+                    Ordering::Equal => start_ord,
+                    _ => self.duration.cmp(&other.duration),
+                }
+            }
+        })
+    }
+}
+
+impl Hash for ClassShiftInstance {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.weekday.hash(state);
+        self.start.hash(state);
+        self.duration.hash(state);
+    }
+}
+
+impl PartialEq for ClassInstanceFile {
+    fn eq(&self, other: &Self) -> bool {
+        self.id.eq(&other.id)
+    }
+}
+
+impl PartialOrd for ClassInstanceFile {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        self.id.partial_cmp(&other.id)
+    }
+}
+
+impl Hash for ClassInstanceFile {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.id.hash(state);
     }
 }
 
@@ -544,6 +766,93 @@ pub struct Group {
     pub(crate) activities: OnceCell<Vec<GroupActivity>>,
     pub(crate) schedulings: OnceCell<Vec<GroupScheduling>>,
     pub(crate) events: OnceCell<Vec<Event>>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum GroupActivity {
+    Announcement(GroupAnnouncement),
+    EventAnnouncement(EventAnnouncement),
+    GalleryUpload(GalleryUpload),
+}
+
+#[derive(Debug, Clone)]
+pub struct GroupAnnouncement {
+    pub(crate) author: ObjRef<User, UserKey>,
+    pub title: String,
+    pub content: String,
+    pub datetime: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone)]
+pub struct EventAnnouncement {
+    pub(crate) author: ObjRef<User, UserKey>,
+    pub(crate) event: ObjRef<Event, EventKey>,
+    pub datetime: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone)]
+pub struct GalleryUpload {
+    pub(crate) author: ObjRef<User, UserKey>,
+    pub datetime: DateTime<Utc>,
+    pub item: GalleryItem,
+}
+
+#[derive(Debug, PartialEq, Eq, Hash, Clone, PartialOrd)]
+pub struct GalleryItem {}
+
+#[derive(Debug, PartialEq, Eq, Hash, Clone, PartialOrd)]
+pub enum GroupScheduling {
+    Once(GroupSchedulingOnce),
+    Periodic(GroupSchedulingPeriodic),
+}
+
+#[derive(Debug, PartialEq, Eq, Hash, Clone)]
+pub struct GroupSchedulingOnce {
+    pub title: Option<String>,
+    pub datetime: DateTime<Utc>,
+    pub duration: u16,
+    pub revoked: bool,
+}
+
+#[derive(Debug, PartialEq, Eq, Hash, Clone)]
+pub struct GroupSchedulingPeriodic {
+    pub title: Option<String>,
+    pub weekday: Weekday,
+    pub time: NaiveTime,
+    pub start_date: NaiveDate,
+    pub end_date: NaiveDate,
+    pub duration: u16,
+    pub revoked: bool,
+}
+
+#[derive(Debug, Clone)]
+pub struct Event {
+    pub id: EventKey,
+    pub title: String,
+    pub description: String,
+    pub start_date: NaiveDate,
+    pub duration: Option<u16>,
+    pub(crate) place: Option<ObjRef<Place, PlaceKey>>,
+    pub capacity: Option<u32>,
+    pub cost: Option<u32>,
+    pub event_type: GroupEventType,
+}
+
+impl Event {
+    pub fn place(&self) -> Result<Option<Place>, Error> {
+        if let Some(place) = &self.place {
+            Ok(Some(place.coerce()?))
+        } else {
+            Ok(None)
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct EventsPage {
+    pub(crate) previous_page: Option<Arc<EventsPage>>,
+    pub(crate) next_page: ObjRef<Option<Arc<EventsPage>>, EventsPageKey>,
+    pub(crate) items: Vec<Arc<Event>>,
 }
 
 impl Group {
@@ -618,19 +927,25 @@ impl fmt::Debug for Group {
     }
 }
 
-#[derive(Debug, Clone)]
-pub enum GroupActivity {
-    Announcement(GroupAnnouncement),
-    EventAnnouncement(EventAnnouncement),
-    GalleryUpload(GalleryUpload),
-}
-
-#[derive(Debug, Clone)]
-pub struct GroupAnnouncement {
-    pub(crate) author: ObjRef<User, UserKey>,
-    pub title: String,
-    pub content: String,
-    pub datetime: DateTime<Utc>,
+impl PartialOrd for GroupActivity {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        let datetime = match self {
+            GroupActivity::Announcement(announcement) => announcement.datetime,
+            GroupActivity::EventAnnouncement(event_announcement) => event_announcement.datetime,
+            GroupActivity::GalleryUpload(gallery_upload) => gallery_upload.datetime,
+        };
+        match other {
+            GroupActivity::Announcement(announcement) => {
+                datetime.partial_cmp(&announcement.datetime)
+            }
+            GroupActivity::EventAnnouncement(event_announcement) => {
+                datetime.partial_cmp(&event_announcement.datetime)
+            }
+            GroupActivity::GalleryUpload(gallery_upload) => {
+                datetime.partial_cmp(&gallery_upload.datetime)
+            }
+        }
+    }
 }
 
 impl GroupAnnouncement {
@@ -639,11 +954,12 @@ impl GroupAnnouncement {
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct EventAnnouncement {
-    pub(crate) author: ObjRef<User, UserKey>,
-    pub(crate) event: ObjRef<Event, EventKey>,
-    pub datetime: DateTime<Utc>,
+impl PartialEq for GroupAnnouncement {
+    fn eq(&self, other: &Self) -> bool {
+        self.title.eq(&other.title)
+            && self.content.eq(&other.content)
+            && self.datetime.eq(&other.datetime)
+    }
 }
 
 impl EventAnnouncement {
@@ -655,11 +971,10 @@ impl EventAnnouncement {
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct GalleryUpload {
-    pub(crate) author: ObjRef<User, UserKey>,
-    pub datetime: DateTime<Utc>,
-    pub item: GalleryItem,
+impl PartialEq for EventAnnouncement {
+    fn eq(&self, other: &Self) -> bool {
+        self.event.identifier.eq(&other.event.identifier) && self.datetime.eq(&other.datetime)
+    }
 }
 
 impl GalleryUpload {
@@ -668,61 +983,50 @@ impl GalleryUpload {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
-pub struct GalleryItem {}
-
-#[derive(Debug, PartialEq, Clone)]
-pub enum GroupScheduling {
-    Once(GroupSchedulingOnce),
-    Periodic(GroupSchedulingPeriodic),
-}
-
-#[derive(Debug, PartialEq, Clone)]
-pub struct GroupSchedulingOnce {
-    pub title: Option<String>,
-    pub datetime: DateTime<Utc>,
-    pub duration: u16,
-    pub revoked: bool,
-}
-
-#[derive(Debug, PartialEq, Clone)]
-pub struct GroupSchedulingPeriodic {
-    pub title: Option<String>,
-    pub weekday: Weekday,
-    pub start_date: NaiveDate,
-    pub end_date: NaiveDate,
-    pub duration: u16,
-    pub revoked: bool,
-}
-
-#[derive(Debug, Clone)]
-pub struct Event {
-    pub id: EventKey,
-    pub title: String,
-    pub description: String,
-    pub start_date: NaiveDate,
-    pub duration: Option<u16>,
-    pub(crate) place: Option<ObjRef<Place, PlaceKey>>,
-    pub capacity: Option<u32>,
-    pub cost: Option<u32>,
-    pub event_type: GroupEventType,
-}
-
-impl Event {
-    pub fn place(&self) -> Result<Option<Place>, Error> {
-        if let Some(place) = &self.place {
-            Ok(Some(place.coerce()?))
-        } else {
-            Ok(None)
-        }
+impl PartialEq for GalleryUpload {
+    fn eq(&self, other: &Self) -> bool {
+        self.item.eq(&other.item) && self.datetime.eq(&other.datetime)
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct EventsPage {
-    pub(crate) previous_page: Option<Arc<EventsPage>>,
-    pub(crate) next_page: ObjRef<Option<Arc<EventsPage>>, EventsPageKey>,
-    pub(crate) items: Vec<Arc<Event>>,
+impl PartialOrd for GroupSchedulingOnce {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        self.datetime.partial_cmp(&other.datetime)
+    }
+}
+
+impl PartialOrd for GroupSchedulingPeriodic {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        let weekday_ord = self.weekday.cmp(&other.weekday);
+        Some(match weekday_ord {
+            Ordering::Equal => {
+                let time_ord = self.time.cmp(&other.time);
+                match time_ord {
+                    Ordering::Equal => self.duration.cmp(&other.duration),
+                    _ => time_ord,
+                }
+            }
+            _ => weekday_ord,
+        })
+    }
+}
+
+impl PartialEq for Event {
+    fn eq(&self, other: &Self) -> bool {
+        self.id.eq(&other.id)
+    }
+}
+
+impl PartialOrd for Event {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        self.start_date.partial_cmp(&other.start_date)
+    }
+}
+
+impl Hash for Event {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.id.hash(state);
+    }
 }
 
 impl EventsPage {
@@ -750,6 +1054,18 @@ pub struct NewsPage {
     pub(crate) items: Vec<Arc<NewsItem>>,
 }
 
+#[derive(Clone)]
+pub struct NewsItem {
+    pub id: NewsItemKey,
+    pub title: String,
+    pub summary: String,
+    pub datetime: DateTime<Utc>,
+    pub thumb: Option<String>,
+    pub url: String,
+
+    pub(crate) client: Arc<Supernova>,
+}
+
 impl NewsPage {
     #[must_use]
     pub fn items(&self) -> &[Arc<NewsItem>] {
@@ -764,18 +1080,6 @@ impl NewsPage {
     pub fn successor(&self) -> Result<Option<Arc<NewsPage>>, Error> {
         self.next_page.coerce()
     }
-}
-
-#[derive(Clone)]
-pub struct NewsItem {
-    pub id: NewsItemKey,
-    pub title: String,
-    pub summary: String,
-    pub datetime: DateTime<Utc>,
-    pub thumb: Option<String>,
-    pub url: String,
-
-    pub(crate) client: Arc<Supernova>,
 }
 
 impl NewsItem {

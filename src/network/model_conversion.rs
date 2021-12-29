@@ -506,6 +506,7 @@ impl nmodels::GroupSchedulingPeriodic {
         models::GroupSchedulingPeriodic {
             title: self.title.clone(),
             weekday: self.weekday.into(),
+            time: self.time,
             start_date: self.start_date,
             end_date: self.end_date,
             duration: self.duration,

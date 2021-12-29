@@ -16,7 +16,7 @@ pub(crate) trait CoersibleEntity<I> {
 /// A lazily loaded reference to a `CoercibleEntity`
 #[derive(Clone)]
 pub(crate) struct ObjRef<T: CoersibleEntity<I>, I> {
-    identifier: I,
+    pub(crate) identifier: I,
     _type: PhantomData<T>,
     // obj: Option<T>,// OnceCell
     client: Arc<Supernova>,

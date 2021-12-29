@@ -1,6 +1,6 @@
 use crate::keys::*;
 use crate::ShiftKey;
-use chrono::{DateTime, NaiveDate, Utc};
+use chrono::{DateTime, NaiveDate, NaiveTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_repr::Deserialize_repr;
 
@@ -547,6 +547,7 @@ pub(crate) struct GroupSchedulingOnce {
 pub(crate) struct GroupSchedulingPeriodic {
     pub(crate) title: Option<String>,
     pub(crate) weekday: Weekday,
+    pub(crate) time: NaiveTime,
     pub(crate) start_date: NaiveDate,
     pub(crate) end_date: NaiveDate,
     pub(crate) duration: u16,
