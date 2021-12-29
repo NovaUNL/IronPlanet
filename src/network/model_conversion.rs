@@ -1,10 +1,10 @@
 use crate::coersion::ObjRef;
 use crate::keys::*;
-use crate::models;
 use crate::models::ShiftType;
 use crate::network::models as nmodels;
 use crate::network::models::RoomType;
 use crate::nmodels::{GroupActivity, GroupEventType, GroupScheduling, GroupType, GroupVisibility};
+use crate::{models, UPSTREAM};
 use crate::{ShiftKey, Supernova};
 use std::cell::Cell;
 use std::sync::Arc;
@@ -156,7 +156,7 @@ impl nmodels::Student {
                 .course
                 .map(|key| ObjRef::<models::Course, CourseKey>::new(key, client)),
             avg_grade: self.avg_grade,
-            url: self.url.clone(),
+            url: format!("{}{}", *UPSTREAM, self.url),
         }
     }
 }
@@ -171,7 +171,7 @@ impl nmodels::Teacher {
             last_year: self.last_year,
             phone: self.phone.clone(),
             email: self.email.clone(),
-            thumb: self.thumb.clone(),
+            thumb: self.thumb.map(|url| format!("{}{}", *UPSTREAM, url)),
             rank: self.rank.clone(),
             departments: self
                 .departments
@@ -183,7 +183,7 @@ impl nmodels::Teacher {
                 .iter()
                 .map(|key| ObjRef::<models::ClassShift, ShiftKey>::new(*key, client.clone()))
                 .collect(),
-            url: self.url.clone(),
+            url: format!("{}{}", *UPSTREAM, self.url),
         }
     }
 }
@@ -350,8 +350,8 @@ impl nmodels::WeakGroup {
             id: self.id,
             name: self.name.clone(),
             abbreviation: self.abbreviation.clone(),
-            url: self.url.clone(),
-            thumb: self.thumb.clone(),
+            url: format!("{}{}", *UPSTREAM, self.url),
+            thumb: self.thumb.map(|url| format!("{}{}", *UPSTREAM, url)),
             group_type: self.group_type.into(),
             official: self.official,
             upgraded: Cell::new(false),
@@ -371,8 +371,8 @@ impl nmodels::Group {
             id: self.id,
             name: self.name.clone(),
             abbreviation: self.abbreviation.clone(),
-            url: self.url.clone(),
-            thumb: self.thumb.clone(),
+            url: format!("{}{}", *UPSTREAM, self.url),
+            thumb: self.thumb.map(|url| format!("{}{}", *UPSTREAM, url)),
             group_type: self.group_type.into(),
             official: self.official,
             upgraded: Cell::new(true),
@@ -604,8 +604,8 @@ impl nmodels::NewsItem {
             title: self.title.to_string(),
             summary: self.summary.to_string(),
             datetime: self.datetime,
-            thumb: self.thumb.clone(),
-            url: self.url.clone(),
+            thumb: self.thumb.map(|url| format!("{}{}", *UPSTREAM, url)),
+            url: format!("{}{}", *UPSTREAM, self.url),
             client,
         }
     }
