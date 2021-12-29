@@ -162,7 +162,7 @@ impl nmodels::Student {
 }
 
 impl nmodels::Teacher {
-    pub(crate) fn link(&self, client: &Arc<Supernova>) -> models::Teacher {
+    pub(crate) fn link(&self, client: Arc<Supernova>) -> models::Teacher {
         models::Teacher {
             id: self.id,
             name: self.name.clone(),
@@ -171,7 +171,10 @@ impl nmodels::Teacher {
             last_year: self.last_year,
             phone: self.phone.clone(),
             email: self.email.clone(),
-            thumb: self.thumb.map(|url| format!("{}{}", *UPSTREAM, url)),
+            thumb: self
+                .thumb
+                .as_ref()
+                .map(|url| format!("{}{}", *UPSTREAM, url)),
             rank: self.rank.clone(),
             departments: self
                 .departments
@@ -184,6 +187,7 @@ impl nmodels::Teacher {
                 .map(|key| ObjRef::<models::ClassShift, ShiftKey>::new(*key, client.clone()))
                 .collect(),
             url: format!("{}{}", *UPSTREAM, self.url),
+            client,
         }
     }
 }
@@ -351,7 +355,10 @@ impl nmodels::WeakGroup {
             name: self.name.clone(),
             abbreviation: self.abbreviation.clone(),
             url: format!("{}{}", *UPSTREAM, self.url),
-            thumb: self.thumb.map(|url| format!("{}{}", *UPSTREAM, url)),
+            thumb: self
+                .thumb
+                .as_ref()
+                .map(|url| format!("{}{}", *UPSTREAM, url)),
             group_type: self.group_type.into(),
             official: self.official,
             upgraded: Cell::new(false),
@@ -372,7 +379,10 @@ impl nmodels::Group {
             name: self.name.clone(),
             abbreviation: self.abbreviation.clone(),
             url: format!("{}{}", *UPSTREAM, self.url),
-            thumb: self.thumb.map(|url| format!("{}{}", *UPSTREAM, url)),
+            thumb: self
+                .thumb
+                .as_ref()
+                .map(|url| format!("{}{}", *UPSTREAM, url)),
             group_type: self.group_type.into(),
             official: self.official,
             upgraded: Cell::new(true),
@@ -604,7 +614,10 @@ impl nmodels::NewsItem {
             title: self.title.to_string(),
             summary: self.summary.to_string(),
             datetime: self.datetime,
-            thumb: self.thumb.map(|url| format!("{}{}", *UPSTREAM, url)),
+            thumb: self
+                .thumb
+                .as_ref()
+                .map(|url| format!("{}{}", *UPSTREAM, url)),
             url: format!("{}{}", *UPSTREAM, self.url),
             client,
         }

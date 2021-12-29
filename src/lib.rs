@@ -421,14 +421,14 @@ impl Supernova {
             // Acquire read lock
             let cache = self.cache.read().unwrap();
             if let Some(net_teacher) = cache.teachers.get(&id) {
-                return Ok(net_teacher.link(&self.clone()));
+                return Ok(net_teacher.link(self.clone()));
             }
         } // Drop read lock
 
         let net_teacher = self.authenticated.fetch_teacher(&self.http_client, id)?;
 
         let mut cache = self.cache.write().unwrap();
-        let teacher = net_teacher.link(&self.clone());
+        let teacher = net_teacher.link(self.clone());
         cache.teachers.insert(net_teacher.id, net_teacher);
         Ok(teacher)
     }

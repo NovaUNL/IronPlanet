@@ -282,7 +282,7 @@ pub struct Student {
     pub url: String,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Teacher {
     pub id: u32,
     pub name: String,
@@ -296,6 +296,8 @@ pub struct Teacher {
     pub(crate) departments: Vec<ObjRef<Department, DepartmentKey>>,
     pub(crate) shifts: Vec<ObjRef<ClassShift, ShiftKey>>,
     pub url: String,
+
+    pub(crate) client: Arc<Supernova>,
 }
 
 #[derive(Debug, Clone)]
@@ -591,6 +593,19 @@ impl Teacher {
         }
         Ok(result)
     }
+
+    #[must_use]
+    pub fn thumb_bytes(&self) -> Option<Result<Vec<u8>, Error>> {
+        if let Some(thumb_url) = &self.thumb {
+            Some(
+                self.client
+                    .base
+                    .fetch_bytes(&self.client.http_client, thumb_url),
+            )
+        } else {
+            None
+        }
+    }
 }
 
 impl PartialEq for Teacher {
@@ -608,6 +623,23 @@ impl PartialOrd for Teacher {
 impl Hash for Teacher {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.id.hash(state);
+    }
+}
+
+impl fmt::Debug for Teacher {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Teacher")
+            .field("id", &self.id)
+            .field("name", &self.name)
+            .field("abbreviation", &self.abbreviation)
+            .field("first_year", &self.first_year)
+            .field("last_year", &self.last_year)
+            .field("phone", &self.phone)
+            .field("email", &self.email)
+            .field("rank", &self.rank)
+            .field("url", &self.url)
+            .field("thumb", &self.thumb)
+            .finish()
     }
 }
 
