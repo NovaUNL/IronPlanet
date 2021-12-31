@@ -1,6 +1,6 @@
 [package]
 name = "supernova"
-version = "0.4.1"
+version = "0.4.2"
 edition = "2021"
 description = "Supernova platform client"
 license = "AGPL-3.0"

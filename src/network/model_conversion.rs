@@ -15,11 +15,22 @@ impl nmodels::Building {
             id: self.id,
             name: self.name.clone(),
             abbreviation: self.abbreviation.clone(),
+            thumb: self
+                .thumb
+                .as_ref()
+                .map(|url| format!("{}{}", *UPSTREAM, url)),
+            cover: self
+                .cover
+                .as_ref()
+                .map(|url| format!("{}{}", *UPSTREAM, url)),
             places: self
                 .places
                 .iter()
                 .map(|key| ObjRef::<models::Place, PlaceKey>::new(*key, client.clone()))
                 .collect(),
+            client: client.clone(),
+            thumb_cache: once_cell::sync::OnceCell::default(),
+            cover_cache: once_cell::sync::OnceCell::default(),
         }
     }
 }
@@ -33,22 +44,34 @@ impl nmodels::Place {
             building: self.building.map(|building_ref| {
                 ObjRef::<models::Building, BuildingKey>::new(building_ref, client.clone())
             }),
-            picture: None,
-            picture_cover: None,
+            features: self
+                .features
+                .iter()
+                .map(|feature| feature.to_model())
+                .collect(),
+            cover: self
+                .cover
+                .as_ref()
+                .map(|url| format!("{}{}", *UPSTREAM, url)),
             variant: if let Some(meta) = &self.room_meta {
                 models::PlaceVariant::Room(models::Room {
+                    title: meta.title.clone(),
                     department: meta.department.map(|ndept| {
-                        ObjRef::<models::Department, DepartmentKey>::new(ndept, client)
+                        ObjRef::<models::Department, DepartmentKey>::new(ndept, client.clone())
                     }),
                     capacity: meta.capacity,
                     door_number: meta.door_number,
                     room_type: models::RoomType::from(meta.room_type),
                     description: meta.description.clone(),
                     equipment: meta.equipment.clone(),
+                    extinguished: meta.extinguished.clone(),
+                    url: format!("{}{}", *UPSTREAM, meta.url),
                 })
             } else {
                 models::PlaceVariant::Generic
             },
+            cover_cache: once_cell::sync::OnceCell::default(),
+            client,
         }
     }
 }
@@ -78,6 +101,13 @@ impl nmodels::Course {
             abbreviation: self.abbreviation.clone(),
             name: self.name.clone(),
             degree: models::Degree::from(self.degree),
+            description: self.description.clone(),
+            active: self.active,
+            url: format!("{}{}", *UPSTREAM, self.url),
+            external_url: self.external_url.clone(),
+            coordinator: self
+                .coordinator
+                .map(|key| ObjRef::<models::Teacher, TeacherKey>::new(key, client.clone())),
             department: self
                 .department
                 .map(|key| ObjRef::<models::Department, CourseKey>::new(key, client)),
@@ -232,8 +262,21 @@ impl nmodels::ClassShift {
             instances: self
                 .instances
                 .iter()
-                .map(|shift_inst| shift_inst.to_model(client.clone()))
+                .map(|shift_inst| shift_inst.link(client.clone()))
                 .collect(),
+        }
+    }
+}
+
+impl nmodels::ClassShiftInstance {
+    fn link(&self, client: Arc<Supernova>) -> models::ClassShiftInstance {
+        models::ClassShiftInstance {
+            weekday: models::Weekday::from(self.weekday),
+            start: self.start,
+            duration: self.duration,
+            room: self
+                .room
+                .map(|key| ObjRef::<models::Place, PlaceKey>::new(key, client)),
         }
     }
 }
@@ -325,15 +368,12 @@ impl From<nmodels::ShiftType> for models::ShiftType {
 //     }
 // }
 
-impl nmodels::ClassShiftInstance {
-    fn to_model(&self, client: Arc<Supernova>) -> models::ClassShiftInstance {
-        models::ClassShiftInstance {
-            weekday: models::Weekday::from(self.weekday),
-            start: self.start,
-            duration: self.duration,
-            room: self
-                .room
-                .map(|key| ObjRef::<models::Place, PlaceKey>::new(key, client)),
+impl nmodels::PlaceFeature {
+    fn to_model(&self) -> models::PlaceFeature {
+        models::PlaceFeature {
+            name: self.name.clone(),
+            description: self.description.clone(),
+            icon: self.icon.clone(),
         }
     }
 }

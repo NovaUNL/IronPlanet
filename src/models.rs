@@ -135,23 +135,39 @@ pub struct Department {
     pub(crate) building: Option<ObjRef<Building, BuildingKey>>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Building {
     pub id: u32,
     pub name: String,
     pub abbreviation: String,
+    pub thumb: Option<String>,
+    pub cover: Option<String>,
+
     pub(crate) places: Vec<ObjRef<Place, PlaceKey>>,
+    pub(crate) client: Arc<Supernova>,
+    pub(crate) thumb_cache: OnceCell<Vec<u8>>,
+    pub(crate) cover_cache: OnceCell<Vec<u8>>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Place {
     pub id: PlaceKey,
     pub variant: PlaceVariant,
     pub name: String,
     pub floor: i8,
+    pub features: Vec<PlaceFeature>,
+    pub cover: Option<String>,
+
     pub(crate) building: Option<ObjRef<Building, BuildingKey>>,
-    pub picture: Option<String>,
-    pub picture_cover: Option<String>,
+    pub(crate) client: Arc<Supernova>,
+    pub(crate) cover_cache: OnceCell<Vec<u8>>,
+}
+
+#[derive(Debug, Clone)]
+pub struct PlaceFeature {
+    pub name: String,
+    pub description: String,
+    pub icon: String,
 }
 
 #[derive(Debug, Clone)]
@@ -162,20 +178,28 @@ pub enum PlaceVariant {
 
 #[derive(Debug, Clone)]
 pub struct Room {
-    pub(crate) department: Option<ObjRef<Department, DepartmentKey>>,
-    pub capacity: Option<u16>,
+    pub title: String,
+    pub description: Option<String>,
     pub door_number: Option<u16>,
     pub room_type: RoomType,
-    pub description: Option<String>,
+    pub extinguished: bool,
+    pub capacity: Option<u16>,
     pub equipment: Option<String>,
+    pub url: String,
+    pub(crate) department: Option<ObjRef<Department, DepartmentKey>>,
 }
 
 #[derive(Debug, Clone)]
 pub struct Course {
     pub id: u32,
-    pub abbreviation: String,
     pub name: String,
+    pub abbreviation: String,
     pub degree: Degree,
+    pub description: Option<String>,
+    pub active: bool,
+    pub url: String,
+    pub external_url: Option<String>,
+    pub(crate) coordinator: Option<ObjRef<Teacher, TeacherKey>>,
     pub(crate) department: Option<ObjRef<Department, DepartmentKey>>,
 }
 
@@ -364,6 +388,46 @@ impl Building {
         }
         Ok(result)
     }
+
+    #[must_use]
+    pub fn thumb_bytes(&self) -> Option<Result<Vec<u8>, Error>> {
+        if let Some(thumb_url) = &self.thumb {
+            Some(if let Some(bytes) = self.thumb_cache.get() {
+                Ok(bytes.clone())
+            } else {
+                let response = self
+                    .client
+                    .base
+                    .fetch_bytes(&self.client.http_client, thumb_url);
+                if let Ok(bytes) = &response {
+                    let _ = self.thumb_cache.set(bytes.clone());
+                }
+                response
+            })
+        } else {
+            None
+        }
+    }
+
+    #[must_use]
+    pub fn cover_bytes(&self) -> Option<Result<Vec<u8>, Error>> {
+        if let Some(cover_url) = &self.cover {
+            Some(if let Some(bytes) = self.cover_cache.get() {
+                Ok(bytes.clone())
+            } else {
+                let response = self
+                    .client
+                    .base
+                    .fetch_bytes(&self.client.http_client, cover_url);
+                if let Ok(bytes) = &response {
+                    let _ = self.cover_cache.set(bytes.clone());
+                }
+                response
+            })
+        } else {
+            None
+        }
+    }
 }
 
 impl PartialEq for Building {
@@ -384,6 +448,18 @@ impl Hash for Building {
     }
 }
 
+impl fmt::Debug for Building {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Building")
+            .field("id", &self.id)
+            .field("name", &self.name)
+            .field("abbreviation", &self.abbreviation)
+            .field("thumb", &self.thumb)
+            .field("cover", &self.cover)
+            .finish()
+    }
+}
+
 impl Place {
     pub fn get_building(&self) -> Result<Option<Building>, Error> {
         Ok(if let Some(building) = &self.building {
@@ -391,6 +467,26 @@ impl Place {
         } else {
             None
         })
+    }
+
+    #[must_use]
+    pub fn cover_bytes(&self) -> Option<Result<Vec<u8>, Error>> {
+        if let Some(cover_url) = &self.cover {
+            Some(if let Some(bytes) = self.cover_cache.get() {
+                Ok(bytes.clone())
+            } else {
+                let response = self
+                    .client
+                    .base
+                    .fetch_bytes(&self.client.http_client, cover_url);
+                if let Ok(bytes) = &response {
+                    let _ = self.cover_cache.set(bytes.clone());
+                }
+                response
+            })
+        } else {
+            None
+        }
     }
 }
 
@@ -415,6 +511,18 @@ impl Hash for Place {
         self.id.hash(state);
     }
 }
+impl fmt::Debug for Place {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Place")
+            .field("id", &self.id)
+            .field("name", &self.name)
+            .field("floor", &self.floor)
+            .field("features", &self.features)
+            .field("cover", &self.cover)
+            .field("variant", &self.variant)
+            .finish()
+    }
+}
 
 impl Room {
     pub fn get_department(&self) -> Result<Option<Department>, Error> {
@@ -430,6 +538,14 @@ impl Course {
     pub fn get_department(&self) -> Result<Option<Department>, Error> {
         Ok(if let Some(department) = &self.department {
             Some(department.coerce()?)
+        } else {
+            None
+        })
+    }
+
+    pub fn get_coordinator(&self) -> Result<Option<Teacher>, Error> {
+        Ok(if let Some(coordinator) = &self.coordinator {
+            Some(coordinator.coerce()?)
         } else {
             None
         })

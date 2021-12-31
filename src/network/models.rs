@@ -217,6 +217,8 @@ pub(crate) struct Building {
     pub(crate) name: String,
     pub(crate) abbreviation: String,
     pub(crate) places: Vec<RoomKey>,
+    pub(crate) cover: Option<String>,
+    pub(crate) thumb: Option<String>,
 }
 
 #[derive(Deserialize, Debug, PartialEq)]
@@ -227,7 +229,7 @@ pub(crate) struct Place {
     pub(crate) floor: i8,
     pub(crate) building: Option<BuildingKey>,
     pub(crate) picture: Option<String>,
-    pub(crate) picture_cover: Option<String>,
+    pub(crate) cover: Option<String>,
     pub(crate) features: Vec<PlaceFeature>,
     pub(crate) room_meta: Option<Room>,
 }
@@ -238,20 +240,22 @@ pub(crate) struct PlaceFeature {
     pub(crate) id: u32,
     pub(crate) name: String,
     pub(crate) description: String,
-    pub(crate) icon: Option<String>,
+    pub(crate) icon: String,
 }
 
 #[derive(Deserialize, Debug, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub(crate) struct Room {
-    // pub(crate) name: String,
+    pub(crate) title: String,
     pub(crate) department: Option<DepartmentKey>,
     pub(crate) capacity: Option<u16>,
     pub(crate) door_number: Option<u16>,
     #[serde(rename = "type")]
     pub(crate) room_type: RoomType,
+    pub(crate) extinguished: bool,
     pub(crate) description: Option<String>,
     pub(crate) equipment: Option<String>,
+    pub(crate) url: String,
 }
 
 #[derive(Deserialize, Debug, PartialEq)]
@@ -261,7 +265,12 @@ pub(crate) struct Course {
     pub(crate) abbreviation: String,
     pub(crate) name: String,
     pub(crate) degree: Degree,
+    pub(crate) description: Option<String>,
+    pub(crate) active: bool,
+    pub(crate) url: String,
+    pub(crate) external_url: Option<String>,
     pub(crate) department: Option<DepartmentKey>,
+    pub(crate) coordinator: Option<TeacherKey>,
 }
 
 #[derive(Deserialize, Debug, PartialEq)]
