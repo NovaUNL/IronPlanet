@@ -21,3 +21,10 @@ pub type NewsItemKey = u32;
 
 pub type EventsPageKey = (u16, u32);
 pub type EventKey = u32;
+
+
+pub type LearningAreaKey = u32;
+pub type LearningSubareaKey = u32;
+pub type LearningSectionKey = u32;
+pub type QuestionKey = u32;
+pub type ServiceKey = u32;

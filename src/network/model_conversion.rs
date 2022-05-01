@@ -404,7 +404,7 @@ impl nmodels::WeakGroup {
             official: self.official,
             upgraded: Cell::new(false),
             client,
-            outsiders_openness: once_cell::sync::OnceCell::default(),
+            outsiders_openness: self.outsiders_openness.into(),
             activities: once_cell::sync::OnceCell::default(),
             schedulings: once_cell::sync::OnceCell::default(),
             events: once_cell::sync::OnceCell::default(),
@@ -429,13 +429,13 @@ impl nmodels::Group {
             official: self.official,
             upgraded: Cell::new(true),
             client: client.clone(),
-            outsiders_openness: once_cell::sync::OnceCell::default(),
+            outsiders_openness: self.outsiders_openness.into(),
             activities: once_cell::sync::OnceCell::default(),
             schedulings: once_cell::sync::OnceCell::default(),
             events: once_cell::sync::OnceCell::default(),
             thumb_cache: once_cell::sync::OnceCell::default(),
         };
-        group.outsiders_openness.set(self.outsiders_openness.into());
+
         group.activities.set(
             self.activities
                 .iter()

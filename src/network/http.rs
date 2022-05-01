@@ -1,155 +1,112 @@
 use crate::errors::Error;
-use serde_json::Value;
-use std::collections::HashMap;
-use std::io::Read;
-use ureq::ErrorKind;
 
-#[derive(Default)]
-pub(crate) struct HTTPClient;
-
-impl HTTPClient {
-    #[allow(clippy::unused_self)]
-    pub(crate) fn send(&self, req: Request) -> Result<String, Error> {
-        let mut request = match req.method {
-            Method::Get => ureq::get(&req.url),
-            Method::Post => ureq::post(&req.url),
-            Method::Put => ureq::put(&req.url),
-            Method::Delete => ureq::delete(&req.url),
-        };
-
-        request = request.set("iron_planet", env!("CARGO_PKG_VERSION"));
-
-        for (k, v) in &req.headers {
-            request = request.set(k, v);
-        }
-
-        let response = if let Some(value) = req.body {
-            request.send_json(value)
-        } else {
-            request.call()
-        }
-        .map_err(|e| match e.kind() {
-            ErrorKind::InvalidUrl | ErrorKind::UnknownScheme | ErrorKind::Io => Error::Client,
-            ErrorKind::ConnectionFailed
-            | ErrorKind::TooManyRedirects
-            | ErrorKind::BadStatus
-            | ErrorKind::BadHeader
-            | ErrorKind::HTTP => Error::Server,
-            ErrorKind::Dns
-            | ErrorKind::InvalidProxyUrl
-            | ErrorKind::ProxyConnect
-            | ErrorKind::ProxyUnauthorized => Error::Network,
-        })?;
-
-        let code = response.status();
-
-        match code {
-            100..=399 => Ok(response.into_string().map_err(|_| Error::Decode)?),
-            400..=499 => Err(Error::ResourceMissing),
-            500..=699 => Err(Error::Server),
-            _ => Err(Error::Generic),
-        }
-    }
-
-    pub(crate) fn fetch_bytes(&self, req: Request) -> Result<Vec<u8>, Error> {
-        let mut request = ureq::get(&req.url).set("iron_planet", env!("CARGO_PKG_VERSION"));
-
-        for (k, v) in &req.headers {
-            request = request.set(k, v);
-        }
-
-        let response = if let Some(value) = req.body {
-            request.send_json(value)
-        } else {
-            request.call()
-        }
-        .map_err(|e| match e.kind() {
-            ErrorKind::InvalidUrl | ErrorKind::UnknownScheme | ErrorKind::Io => Error::Client,
-            ErrorKind::ConnectionFailed
-            | ErrorKind::TooManyRedirects
-            | ErrorKind::BadStatus
-            | ErrorKind::BadHeader
-            | ErrorKind::HTTP => Error::Server,
-            ErrorKind::Dns
-            | ErrorKind::InvalidProxyUrl
-            | ErrorKind::ProxyConnect
-            | ErrorKind::ProxyUnauthorized => Error::Network,
-        })?;
-
-        let code = response.status();
-
-        match code {
-            100..=399 => {
-                let mut bytes: Vec<u8> = Vec::new();
-                response
-                    .into_reader()
-                    .read_to_end(&mut bytes)
-                    .map_err(|_| Error::Decode)?;
-                Ok(bytes)
-            }
-            400..=499 => Err(Error::ResourceMissing),
-            500..=699 => Err(Error::Server),
-            _ => Err(Error::Generic),
-        }
-    }
-}
-
-pub(crate) struct RequestBuilder<'a> {
-    url: &'a str,
-    headers: HashMap<String, String>,
-    method: Method,
-    body: Option<Value>,
-}
-
-impl<'a> RequestBuilder<'a> {
-    pub(crate) fn new(url: &'a str) -> Self {
-        RequestBuilder {
-            url,
-            headers: HashMap::default(),
-            method: Method::Get,
-            body: None,
-        }
-    }
-
-    pub(crate) fn add_header(&mut self, key: String, value: String) -> &mut RequestBuilder<'a> {
-        self.headers.insert(key, value);
-        self
-    }
-
-    pub(crate) fn set_method(&mut self, method: Method) -> &mut RequestBuilder<'a> {
-        self.method = method;
-        self
-    }
-
-    pub(crate) fn set_body(&mut self, value: Value) -> &mut RequestBuilder<'a> {
-        self.body = Some(value);
-        self
-    }
-
-    pub(crate) fn build(&self) -> Request {
-        Request {
-            url: self.url.to_string(),
-            headers: self.headers.clone(),
-            method: self.method,
-            body: self.body.clone(),
-        }
-    }
-}
+use hyper::body::Buf;
+use hyper::client::HttpConnector;
+use hyper::http::request;
+use hyper::{Body, Client, Method, Response as HyperResponse, StatusCode};
+use hyper_tls::HttpsConnector;
+use serde::de::DeserializeOwned;
+use serde::Serialize;
 
 pub(crate) struct Request {
-    url: String,
-    headers: HashMap<String, String>,
-    method: Method,
-    body: Option<Value>,
+    builder: request::Builder,
+    client: Client<HttpsConnector<HttpConnector>>,
 }
 
-#[derive(Copy, Clone)]
-#[allow(dead_code)]
-pub(crate) enum Method {
-    Get,
-    Post,
-    Put,
-    Delete,
+impl Request {
+    pub(crate) fn new(url: &str) -> Request {
+        let builder = request::Builder::new()
+            .uri(url)
+            .method(Method::GET)
+            .header("iron_planet", env!("CARGO_PKG_VERSION"));
+
+        let https = HttpsConnector::new();
+        let client = Client::builder().build::<_, hyper::Body>(https);
+
+        Request { builder, client }
+    }
+
+    pub(crate) fn header(mut self, k: String, v: String) -> Request {
+        self.builder = self.builder.header(k, v);
+        self
+    }
+
+    pub(crate) fn attach_token(self, token: &str) -> Request {
+        self.header("Authorization".to_string(), format!("Token {}", token))
+    }
+
+    pub(crate) fn method(mut self, method: Method) -> Request {
+        self.builder = self.builder.method(method);
+        self
+    }
+
+    pub(crate) async fn body(self, body: Body) -> Result<Response, Error> {
+        let response = self
+            .client
+            .request(self.builder.body(body).map_err(|_| Error::Generic)?)
+            .await
+            .map_err(|_| Error::Network)?;
+
+        check_error(response.status())?;
+
+        Ok(Response(response))
+    }
+
+    pub(crate) async fn send(self) -> Result<Response, Error> {
+        self.body(Body::default()).await
+    }
+
+    pub(crate) async fn send_serializable<T: Serialize>(
+        self,
+        data: &T,
+    ) -> Result<Response, Error> {
+        let json = serde_json::to_string(data)
+            .map_err(|err| Error::Serialization(err))?;
+        let body = Body::from(json);
+        self.body(body).await
+    }
 }
 
-// pub(crate) type Headers = HashMap<String, String>;
+pub(crate) struct Response(HyperResponse<Body>);
+
+impl Response {
+    pub(crate) async fn to_vec(self) -> Result<Vec<u8>, Error> {
+        let data = hyper::body::to_bytes(self.0)
+            .await
+            .map_err(|_err| Error::Generic)?
+            .to_vec();
+        Ok(data)
+    }
+
+    pub(crate) async fn deserialize<T: DeserializeOwned>(
+        mut self,
+    ) -> Result<T, Error> {
+        let body = hyper::body::aggregate(&mut self.0)
+            .await
+            .map_err(|_err| Error::Generic)?;
+
+        let data: T = serde_json::from_reader(body.reader())
+            .map_err(|err| Error::Deserialization(err))?;
+        Ok(data)
+    }
+
+    pub(crate) fn code(&self) -> StatusCode {
+        self.0.status()
+    }
+}
+
+pub(crate) fn check_error(code: StatusCode) -> Result<(), Error> {
+    let ucode = code.as_u16();
+
+    if code.is_server_error() {
+        Err(Error::Server)
+    } else if ucode == 404 {
+        Err(Error::ResourceMissing)
+    } else if code.is_client_error() {
+        Err(Error::Client)
+    } else if code.is_redirection() {
+        Err(Error::ResourceMissing)
+    } else {
+        Ok(())
+    }
+}

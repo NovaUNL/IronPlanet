@@ -14,11 +14,13 @@
 use crate::errors::Error;
 use crate::keys::*;
 use crate::network::cache::ClientCache;
-use crate::network::endpoints::{AuthenticatedSupernova, BaseSupernova, UPSTREAM};
-use crate::network::http::HTTPClient;
+use crate::network::endpoints::{
+    AuthenticatedSupernova, BaseSupernova, UPSTREAM,
+};
 use crate::network::models::{self as nmodels, AuthToken};
 use crate::nmodels::ClientMeta;
 use crate::utils::get_client_meta;
+
 use std::sync::{Arc, RwLock};
 
 pub(crate) mod coersion;
@@ -34,7 +36,6 @@ const DEFAULT_PAGE_ITEM_LIMIT: u16 = 100;
 pub struct Supernova {
     base: BaseSupernova,
     authenticated: AuthenticatedSupernova,
-    http_client: HTTPClient,
     cache: RwLock<ClientCache>,
 }
 
@@ -49,21 +50,29 @@ impl Supernova {
         Arc::new(Supernova::default())
     }
 
-    pub fn login(&self, username: &str, password: &str) -> Result<AuthToken, Error> {
-        let creds = nmodels::BasicAuthCredentials::new(username, password, Some(get_client_meta()));
-        let token = self.base.login(&self.http_client, &creds)?;
+    pub async fn login(
+        &self,
+        username: &str,
+        password: &str,
+    ) -> Result<AuthToken, Error> {
+        let creds = nmodels::BasicAuthCredentials::new(
+            username,
+            password,
+            Some(get_client_meta()),
+        );
+        let token = self.base.login(&creds).await?;
         self.authenticated.set_token(token.token.clone());
         Ok(token.token)
     }
 
-    pub fn logout(&self) -> Result<(), Error> {
-        self.authenticated.logout(&self.http_client)?;
+    pub async fn logout(&self) -> Result<(), Error> {
+        self.authenticated.logout().await?;
         self.authenticated.clear_token();
         Ok(())
     }
 
-    pub fn set_auth_token(&self, token: AuthToken) -> Result<(), Error> {
-        self.base.verify(&self.http_client, token.clone())?;
+    pub async fn set_auth_token(&self, token: AuthToken) -> Result<(), Error> {
+        self.base.verify(token.clone()).await?;
         self.authenticated.set_token(token);
         Ok(())
     }
@@ -77,7 +86,7 @@ impl Supernova {
             .is_some()
     }
 
-    pub fn get_departments(
+    pub async fn get_departments(
         self: &Arc<Supernova>,
         conf: &RequestConfig,
     ) -> Result<Vec<models::Department>, Error> {
@@ -93,7 +102,7 @@ impl Supernova {
             }
         } // Drop read lock
 
-        let net_departments = self.base.fetch_departments(&self.http_client)?;
+        let net_departments = self.base.fetch_departments().await?;
         {
             let mut cache = self.cache.write().unwrap();
             cache.departments_populated = true;
@@ -112,7 +121,7 @@ impl Supernova {
         }
     }
 
-    pub fn get_buildings(
+    pub async fn get_buildings(
         self: &Arc<Supernova>,
         conf: &RequestConfig,
     ) -> Result<Vec<models::Building>, Error> {
@@ -128,7 +137,7 @@ impl Supernova {
             }
         } // Drop read lock
 
-        let net_buildings = self.base.fetch_buildings(&self.http_client)?;
+        let net_buildings = self.base.fetch_buildings().await?;
         {
             let mut cache = self.cache.write().unwrap();
             cache.buildings_populated = true;
@@ -147,7 +156,7 @@ impl Supernova {
         }
     }
 
-    pub fn get_places(
+    pub async fn get_places(
         self: &Arc<Supernova>,
         conf: &RequestConfig,
     ) -> Result<Vec<models::Place>, Error> {
@@ -163,7 +172,7 @@ impl Supernova {
             }
         }
         // Drop read lock
-        let net_places = self.base.fetch_places(&self.http_client)?;
+        let net_places = self.base.fetch_places().await?;
         {
             let mut cache = self.cache.write().unwrap();
             cache.places_populated = true;
@@ -182,7 +191,7 @@ impl Supernova {
         }
     }
 
-    pub fn get_classes(
+    pub async fn get_classes(
         self: &Arc<Supernova>,
         conf: &RequestConfig,
     ) -> Result<Vec<models::Class>, Error> {
@@ -198,7 +207,7 @@ impl Supernova {
             }
         } // Drop read lock
 
-        let net_classes = self.base.fetch_classes(&self.http_client)?;
+        let net_classes = self.base.fetch_classes().await?;
         {
             let mut cache = self.cache.write().unwrap();
             cache.classes_populated = true;
@@ -217,7 +226,7 @@ impl Supernova {
         }
     }
 
-    pub fn get_courses(
+    pub async fn get_courses(
         self: &Arc<Supernova>,
         conf: &RequestConfig,
     ) -> Result<Vec<models::Course>, Error> {
@@ -233,7 +242,7 @@ impl Supernova {
             }
         } // Drop read lock
 
-        let net_courses = self.base.fetch_courses(&self.http_client)?;
+        let net_courses = self.base.fetch_courses().await?;
         {
             let mut cache = self.cache.write().unwrap();
             cache.courses_populated = true;
@@ -252,7 +261,7 @@ impl Supernova {
         }
     }
 
-    pub fn get_building(
+    pub async fn get_building(
         self: &Arc<Supernova>,
         id: keys::BuildingKey,
         conf: &RequestConfig,
@@ -265,7 +274,7 @@ impl Supernova {
             }
         } // Drop read lock
 
-        let net_building = self.base.fetch_building(&self.http_client, id)?;
+        let net_building = self.base.fetch_building(id).await?;
 
         let mut cache = self.cache.write().unwrap();
         let building = net_building.link(&self.clone());
@@ -273,7 +282,7 @@ impl Supernova {
         Ok(building)
     }
 
-    pub fn get_place(
+    pub async fn get_place(
         self: &Arc<Supernova>,
         id: keys::PlaceKey,
         conf: &RequestConfig,
@@ -286,7 +295,7 @@ impl Supernova {
             }
         } // Drop read lock
 
-        let net_place = self.base.fetch_place(&self.http_client, id)?;
+        let net_place = self.base.fetch_place(id).await?;
 
         let mut cache = self.cache.write().unwrap();
         let place = net_place.link(self.clone());
@@ -294,7 +303,7 @@ impl Supernova {
         Ok(place)
     }
 
-    pub fn get_department(
+    pub async fn get_department(
         self: &Arc<Supernova>,
         id: keys::DepartmentKey,
         conf: &RequestConfig,
@@ -307,7 +316,7 @@ impl Supernova {
             }
         } // Drop read lock
 
-        let net_department = self.base.fetch_department(&self.http_client, id)?;
+        let net_department = self.base.fetch_department(id).await?;
 
         let mut cache = self.cache.write().unwrap();
         let department = net_department.link(self.clone());
@@ -315,7 +324,7 @@ impl Supernova {
         Ok(department)
     }
 
-    pub fn get_course(
+    pub async fn get_course(
         self: &Arc<Supernova>,
         id: keys::CourseKey,
         conf: &RequestConfig,
@@ -328,7 +337,7 @@ impl Supernova {
             }
         } // Drop read lock
 
-        let net_course = self.base.fetch_course(&self.http_client, id)?;
+        let net_course = self.base.fetch_course(id).await?;
 
         let mut cache = self.cache.write().unwrap();
         let course = net_course.link(self.clone());
@@ -336,7 +345,7 @@ impl Supernova {
         Ok(course)
     }
 
-    pub fn get_class(
+    pub async fn get_class(
         self: &Arc<Supernova>,
         id: keys::ClassKey,
         conf: &RequestConfig,
@@ -349,7 +358,7 @@ impl Supernova {
             }
         } // Drop read lock
 
-        let net_class = self.base.fetch_class(&self.http_client, id)?;
+        let net_class = self.base.fetch_class(id).await?;
 
         let mut cache = self.cache.write().unwrap();
         let klass = net_class.link(&self.clone());
@@ -357,7 +366,7 @@ impl Supernova {
         Ok(klass)
     }
 
-    pub fn get_class_instance(
+    pub async fn get_class_instance(
         self: &Arc<Supernova>,
         id: keys::ClassInstanceKey,
         conf: &RequestConfig,
@@ -370,9 +379,8 @@ impl Supernova {
             }
         } // Drop read lock
 
-        let net_class_inst = self
-            .authenticated
-            .fetch_class_instance(&self.http_client, id)?;
+        let net_class_inst =
+            self.authenticated.fetch_class_instance(id).await?;
 
         let mut cache = self.cache.write().unwrap();
         net_class_inst
@@ -391,7 +399,7 @@ impl Supernova {
         Ok(class_inst)
     }
 
-    pub fn get_student(
+    pub async fn get_student(
         self: &Arc<Supernova>,
         id: keys::StudentKey,
         conf: &RequestConfig,
@@ -404,7 +412,7 @@ impl Supernova {
             }
         } // Drop read lock
 
-        let net_student = self.authenticated.fetch_student(&self.http_client, id)?;
+        let net_student = self.authenticated.fetch_student(id).await?;
 
         let mut cache = self.cache.write().unwrap();
         let student = net_student.link(self.clone());
@@ -412,7 +420,7 @@ impl Supernova {
         Ok(student)
     }
 
-    pub fn get_teacher(
+    pub async fn get_teacher(
         self: &Arc<Supernova>,
         id: keys::ClassKey,
         conf: &RequestConfig,
@@ -425,7 +433,7 @@ impl Supernova {
             }
         } // Drop read lock
 
-        let net_teacher = self.authenticated.fetch_teacher(&self.http_client, id)?;
+        let net_teacher = self.authenticated.fetch_teacher(id).await?;
 
         let mut cache = self.cache.write().unwrap();
         let teacher = net_teacher.link(self.clone());
@@ -433,7 +441,7 @@ impl Supernova {
         Ok(teacher)
     }
 
-    pub fn get_enrollment(
+    pub async fn get_enrollment(
         self: &Arc<Supernova>,
         id: keys::ClassKey,
         conf: &RequestConfig,
@@ -446,7 +454,7 @@ impl Supernova {
             }
         } // Drop read lock
 
-        let net_enrollment = self.authenticated.fetch_enrollment(&self.http_client, id)?;
+        let net_enrollment = self.authenticated.fetch_enrollment(id).await?;
 
         let mut cache = self.cache.write().unwrap();
         let enrollment = net_enrollment.link(self.clone());
@@ -454,7 +462,7 @@ impl Supernova {
         Ok(enrollment)
     }
 
-    pub fn get_shift(
+    pub async fn get_shift(
         self: &Arc<Supernova>,
         id: keys::ClassKey,
         conf: &RequestConfig,
@@ -467,7 +475,7 @@ impl Supernova {
             }
         } // Drop read lock
 
-        let net_shift = self.authenticated.fetch_shift(&self.http_client, id)?;
+        let net_shift = self.authenticated.fetch_shift(id).await?;
 
         let mut cache = self.cache.write().unwrap();
         let shift = net_shift.link(&self.clone());
@@ -475,7 +483,7 @@ impl Supernova {
         Ok(shift)
     }
 
-    pub fn get_groups(
+    pub async fn get_groups(
         self: &Arc<Supernova>,
         conf: &RequestConfig,
     ) -> Result<Vec<models::Group>, Error> {
@@ -491,7 +499,7 @@ impl Supernova {
             }
         } // Drop read lock
 
-        let net_groups = self.base.fetch_groups(&self.http_client)?;
+        let net_groups = self.base.fetch_groups().await?;
         {
             let mut cache = self.cache.write().unwrap();
             cache.groups_populated = true;
@@ -510,25 +518,28 @@ impl Supernova {
         }
     }
 
-    pub fn get_group(self: &Arc<Supernova>, id: keys::GroupKey) -> Result<models::Group, Error> {
-        let net_group = self.base.fetch_group(&self.http_client, id)?;
+    pub async fn get_group(
+        self: &Arc<Supernova>,
+        id: keys::GroupKey,
+    ) -> Result<models::Group, Error> {
+        let net_group = self.base.fetch_group(id).await?;
         Ok(net_group.link(self))
     }
 
-    pub fn get_events_front_page(
+    pub async fn get_events_front_page(
         self: &Arc<Supernova>,
         conf: &RequestConfig,
     ) -> Result<Option<Arc<models::EventsPage>>, Error> {
         let key = (DEFAULT_PAGE_ITEM_LIMIT, 0);
-        self.get_events_page(key, conf)
+        self.get_events_page(key, conf).await
     }
 
-    pub fn get_events_page(
+    pub async fn get_events_page(
         self: &Arc<Supernova>,
         key: EventsPageKey,
         _conf: &RequestConfig,
     ) -> Result<Option<Arc<models::EventsPage>>, Error> {
-        let net_events_page = self.base.fetch_events(&self.http_client, key)?;
+        let net_events_page = self.base.fetch_events(key).await?;
         if net_events_page.results.is_empty() {
             Ok(None)
         } else {
@@ -536,20 +547,28 @@ impl Supernova {
         }
     }
 
-    pub fn get_news_front_page(
+    pub async fn get_event(
+        self: &Arc<Supernova>,
+        _key: EventKey,
+        _conf: &RequestConfig,
+    ) -> Result<models::Event, Error> {
+        todo!()
+    }
+
+    pub async fn get_news_front_page(
         self: &Arc<Supernova>,
         conf: &RequestConfig,
     ) -> Result<Option<Arc<models::NewsPage>>, Error> {
         let key = (DEFAULT_PAGE_ITEM_LIMIT, 0);
-        self.get_news_page(key, conf)
+        self.get_news_page(key, conf).await
     }
 
-    pub fn get_news_page(
+    pub async fn get_news_page(
         self: &Arc<Supernova>,
         key: NewsPageKey,
         _conf: &RequestConfig,
     ) -> Result<Option<Arc<models::NewsPage>>, Error> {
-        let net_news_page = self.base.fetch_news(&self.http_client, key)?;
+        let net_news_page = self.base.fetch_news(key).await?;
         if net_news_page.results.is_empty() {
             Ok(None)
         } else {
@@ -557,23 +576,26 @@ impl Supernova {
         }
     }
 
-    pub fn load_resource(self: &Arc<Supernova>, url: &str) -> Result<Vec<u8>, Error> {
+    pub async fn load_resource(
+        self: &Arc<Supernova>,
+        url: &str,
+    ) -> Result<Vec<u8>, Error> {
         let url = format!("{}{}", *UPSTREAM, url);
         if self.is_authenticated() {
-            self.authenticated.fetch_bytes(&self.http_client, &url)
+            self.authenticated.fetch_bytes(&url).await
         } else {
-            self.base.fetch_bytes(&self.http_client, &url)
+            self.base.fetch_bytes(&url).await
         }
     }
 
-    pub fn warmup(self: &Arc<Supernova>) -> Result<(), Error> {
+    pub async fn warmup(self: &Arc<Supernova>) -> Result<(), Error> {
         let conf = RequestConfig::default();
-        self.get_buildings(&conf)?;
-        self.get_courses(&conf)?;
-        self.get_classes(&conf)?;
-        self.get_departments(&conf)?;
-        self.get_places(&conf)?;
-        self.get_groups(&conf)?;
+        self.get_buildings(&conf).await?;
+        self.get_courses(&conf).await?;
+        self.get_classes(&conf).await?;
+        self.get_departments(&conf).await?;
+        self.get_places(&conf).await?;
+        self.get_groups(&conf).await?;
         Ok(())
     }
 }

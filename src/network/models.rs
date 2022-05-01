@@ -36,17 +36,6 @@ impl<'a> BasicAuthCredentials<'_> {
 
 pub type AuthToken = String;
 
-#[derive(Serialize)]
-pub(crate) struct TokenCredentials {
-    token: AuthToken,
-}
-
-impl TokenCredentials {
-    pub(crate) fn new(token: AuthToken) -> TokenCredentials {
-        TokenCredentials { token }
-    }
-}
-
 #[derive(Deserialize)]
 pub(crate) struct TokenResult {
     pub(crate) token: AuthToken,
@@ -481,6 +470,7 @@ pub(crate) struct WeakGroup {
     pub(crate) abbreviation: String,
     #[serde(rename = "type")]
     pub(crate) group_type: GroupType,
+    pub(crate) outsiders_openness: GroupVisibility,
     pub(crate) official: bool,
     pub(crate) url: String,
     pub(crate) thumb: Option<String>,

@@ -1,18 +1,19 @@
 use crate::coersion::ObjRef;
-use chrono::{DateTime, NaiveDate, NaiveTime, Utc};
-use once_cell::sync::OnceCell;
+use crate::errors::Error;
+use crate::keys::*;
+pub use crate::network::models::{ClassInfo, ClassInfoEntry, ClassInfoSources};
+use crate::Supernova;
+
 use std::cell::Cell;
 use std::cmp::Ordering;
 use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::sync::Arc;
 
-use crate::errors::Error;
-use crate::keys::*;
-pub use crate::network::models::{ClassInfo, ClassInfoEntry, ClassInfoSources};
-use crate::Supernova;
+use chrono::{DateTime, NaiveDate, NaiveTime, Utc};
+use once_cell::sync::OnceCell;
 
-#[derive(Debug, PartialEq, Eq, Hash, Clone, Ord, PartialOrd)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy, Ord, PartialOrd)]
 pub enum Weekday {
     Monday,
     Thursday,
@@ -23,7 +24,7 @@ pub enum Weekday {
     Sunday,
 }
 
-#[derive(Debug, PartialEq, Eq, Hash, Clone, Ord, PartialOrd)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy, Ord, PartialOrd)]
 pub enum Period {
     Year,
     FirstSemester,
@@ -34,7 +35,7 @@ pub enum Period {
     FourthTrimester,
 }
 
-#[derive(Debug, PartialEq, Eq, Hash, Clone, Ord, PartialOrd)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy, Ord, PartialOrd)]
 pub enum Degree {
     BSc,
     MSc,
@@ -45,7 +46,7 @@ pub enum Degree {
     PreGraduation,
 }
 
-#[derive(Debug, PartialEq, Eq, Hash, Clone, Ord, PartialOrd)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy, Ord, PartialOrd)]
 pub enum ShiftType {
     Theoretical,
     Practical,
@@ -58,7 +59,7 @@ pub enum ShiftType {
     OnlinePracticalTheoretical,
 }
 
-#[derive(Debug, PartialEq, Eq, Hash, Clone, Ord, PartialOrd)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy, Ord, PartialOrd)]
 pub enum FileCategory {
     Image,
     Slides,
@@ -71,7 +72,7 @@ pub enum FileCategory {
     Others,
 }
 
-#[derive(Debug, PartialEq, Eq, Hash, Clone, Ord, PartialOrd)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy, Ord, PartialOrd)]
 pub enum FileLicense {
     RightsReserved,
     PublicDomain,
@@ -85,7 +86,7 @@ pub enum FileLicense {
     GenericPermissive,
 }
 
-#[derive(Debug, PartialEq, Eq, Hash, Clone, Ord, PartialOrd)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy, Ord, PartialOrd)]
 pub enum FileVisibility {
     Public,
     Students,
@@ -93,14 +94,14 @@ pub enum FileVisibility {
     Nobody,
 }
 
-#[derive(Debug, PartialEq, Eq, Hash, Clone, Ord, PartialOrd)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy, Ord, PartialOrd)]
 pub enum Season {
     Normal,
     Exam,
     Special,
 }
 
-#[derive(Debug, PartialEq, Eq, Hash, Clone, Ord, PartialOrd)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy, Ord, PartialOrd)]
 pub enum ClassEventType {
     Test,
     Exam,
@@ -114,7 +115,7 @@ pub enum ClassEventType {
     Talk,
 }
 
-#[derive(Debug, PartialEq, Eq, Hash, Clone, Ord, PartialOrd)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy, Ord, PartialOrd)]
 pub enum RoomType {
     Generic,
     Classroom,
@@ -345,18 +346,18 @@ pub struct Enrollment {
 }
 
 impl Department {
-    pub fn get_building(&self) -> Result<Option<Building>, Error> {
+    pub async fn get_building(&self) -> Result<Option<Building>, Error> {
         Ok(if let Some(building) = &self.building {
-            Some(building.coerce()?)
+            Some(building.coerce().await?)
         } else {
             None
         })
     }
 
-    pub fn get_courses(&self) -> Result<Vec<Course>, Error> {
+    pub async fn get_courses(&self) -> Result<Vec<Course>, Error> {
         let mut result = vec![];
         for course_ref in &self.courses {
-            result.push(course_ref.coerce()?);
+            result.push(course_ref.coerce().await?);
         }
         Ok(result)
     }
@@ -381,24 +382,20 @@ impl Hash for Department {
 }
 
 impl Building {
-    pub fn get_rooms(&self) -> Result<Vec<Place>, Error> {
+    pub async fn get_rooms(&self) -> Result<Vec<Place>, Error> {
         let mut result = vec![];
         for places_ref in &self.places {
-            result.push(places_ref.coerce()?);
+            result.push(places_ref.coerce().await?);
         }
         Ok(result)
     }
 
-    #[must_use]
-    pub fn thumb_bytes(&self) -> Option<Result<Vec<u8>, Error>> {
+    pub async fn thumb_bytes(&self) -> Option<Result<Vec<u8>, Error>> {
         if let Some(thumb_url) = &self.thumb {
             Some(if let Some(bytes) = self.thumb_cache.get() {
                 Ok(bytes.clone())
             } else {
-                let response = self
-                    .client
-                    .base
-                    .fetch_bytes(&self.client.http_client, thumb_url);
+                let response = self.client.base.fetch_bytes(thumb_url).await;
                 if let Ok(bytes) = &response {
                     let _ = self.thumb_cache.set(bytes.clone());
                 }
@@ -409,19 +406,17 @@ impl Building {
         }
     }
 
-    #[must_use]
-    pub fn cover_bytes(&self) -> Option<Result<Vec<u8>, Error>> {
+    pub async fn cover_bytes(&self) -> Option<Result<Vec<u8>, Error>> {
         if let Some(cover_url) = &self.cover {
             Some(if let Some(bytes) = self.cover_cache.get() {
                 Ok(bytes.clone())
             } else {
-                let response = self
-                    .client
-                    .base
-                    .fetch_bytes(&self.client.http_client, cover_url);
+                let response = self.client.base.fetch_bytes(cover_url).await;
+
                 if let Ok(bytes) = &response {
                     let _ = self.cover_cache.set(bytes.clone());
                 }
+
                 response
             })
         } else {
@@ -461,27 +456,25 @@ impl fmt::Debug for Building {
 }
 
 impl Place {
-    pub fn get_building(&self) -> Result<Option<Building>, Error> {
+    pub async fn get_building(&self) -> Result<Option<Building>, Error> {
         Ok(if let Some(building) = &self.building {
-            Some(building.coerce()?)
+            Some(building.coerce().await?)
         } else {
             None
         })
     }
 
-    #[must_use]
-    pub fn cover_bytes(&self) -> Option<Result<Vec<u8>, Error>> {
+    pub async fn cover_bytes(&self) -> Option<Result<Vec<u8>, Error>> {
         if let Some(cover_url) = &self.cover {
             Some(if let Some(bytes) = self.cover_cache.get() {
                 Ok(bytes.clone())
             } else {
-                let response = self
-                    .client
-                    .base
-                    .fetch_bytes(&self.client.http_client, cover_url);
+                let response = self.client.base.fetch_bytes(cover_url).await;
+
                 if let Ok(bytes) = &response {
                     let _ = self.cover_cache.set(bytes.clone());
                 }
+
                 response
             })
         } else {
@@ -525,9 +518,9 @@ impl fmt::Debug for Place {
 }
 
 impl Room {
-    pub fn get_department(&self) -> Result<Option<Department>, Error> {
+    pub async fn get_department(&self) -> Result<Option<Department>, Error> {
         Ok(if let Some(department) = &self.department {
-            Some(department.coerce()?)
+            Some(department.coerce().await?)
         } else {
             None
         })
@@ -535,17 +528,17 @@ impl Room {
 }
 
 impl Course {
-    pub fn get_department(&self) -> Result<Option<Department>, Error> {
+    pub async fn get_department(&self) -> Result<Option<Department>, Error> {
         Ok(if let Some(department) = &self.department {
-            Some(department.coerce()?)
+            Some(department.coerce().await?)
         } else {
             None
         })
     }
 
-    pub fn get_coordinator(&self) -> Result<Option<Teacher>, Error> {
+    pub async fn get_coordinator(&self) -> Result<Option<Teacher>, Error> {
         Ok(if let Some(coordinator) = &self.coordinator {
-            Some(coordinator.coerce()?)
+            Some(coordinator.coerce().await?)
         } else {
             None
         })
@@ -571,18 +564,18 @@ impl Hash for Course {
 }
 
 impl Class {
-    pub fn get_department(&self) -> Result<Option<Department>, Error> {
+    pub async fn get_department(&self) -> Result<Option<Department>, Error> {
         Ok(if let Some(department) = &self.department {
-            Some(department.coerce()?)
+            Some(department.coerce().await?)
         } else {
             None
         })
     }
 
-    pub fn get_instances(&self) -> Result<Vec<ClassInstance>, Error> {
+    pub async fn get_instances(&self) -> Result<Vec<ClassInstance>, Error> {
         let mut result = vec![];
         for instance_ref in &self.instances {
-            result.push(instance_ref.coerce()?);
+            result.push(instance_ref.coerce().await?);
         }
         Ok(result)
     }
@@ -607,26 +600,26 @@ impl Hash for Class {
 }
 
 impl ClassInstance {
-    pub fn get_department(&self) -> Result<Option<Department>, Error> {
+    pub async fn get_department(&self) -> Result<Option<Department>, Error> {
         Ok(if let Some(department) = &self.department {
-            Some(department.coerce()?)
+            Some(department.coerce().await?)
         } else {
             None
         })
     }
 
-    pub fn get_enrollments(&self) -> Result<Vec<Enrollment>, Error> {
+    pub async fn get_enrollments(&self) -> Result<Vec<Enrollment>, Error> {
         let mut result = vec![];
         for student_ref in &self.enrollments {
-            result.push(student_ref.coerce()?);
+            result.push(student_ref.coerce().await?);
         }
         Ok(result)
     }
 
-    pub fn get_shifts(&self) -> Result<Vec<ClassShift>, Error> {
+    pub async fn get_shifts(&self) -> Result<Vec<ClassShift>, Error> {
         let mut result = vec![];
         for shift_ref in &self.shifts {
-            result.push(shift_ref.coerce()?);
+            result.push(shift_ref.coerce().await?);
         }
         Ok(result)
     }
@@ -651,26 +644,26 @@ impl Hash for ClassInstance {
 }
 
 impl Student {
-    pub fn get_course(&self) -> Result<Option<Course>, Error> {
+    pub async fn get_course(&self) -> Result<Option<Course>, Error> {
         Ok(if let Some(course_ref) = &self.course {
-            Some(course_ref.coerce()?)
+            Some(course_ref.coerce().await?)
         } else {
             None
         })
     }
 
-    pub fn get_enrollments(&self) -> Result<Vec<Enrollment>, Error> {
+    pub async fn get_enrollments(&self) -> Result<Vec<Enrollment>, Error> {
         let mut result = vec![];
         for enrollment_ref in &self.enrollments {
-            result.push(enrollment_ref.coerce()?);
+            result.push(enrollment_ref.coerce().await?);
         }
         Ok(result)
     }
 
-    pub fn get_shifts(&self) -> Result<Vec<ClassShift>, Error> {
+    pub async fn get_shifts(&self) -> Result<Vec<ClassShift>, Error> {
         let mut result = vec![];
         for shift_ref in &self.shifts {
-            result.push(shift_ref.coerce()?);
+            result.push(shift_ref.coerce().await?);
         }
         Ok(result)
     }
@@ -695,35 +688,33 @@ impl Hash for Student {
 }
 
 impl Teacher {
-    pub fn get_departments(&self) -> Result<Vec<Department>, Error> {
+    pub async fn get_departments(&self) -> Result<Vec<Department>, Error> {
         let mut result = vec![];
         for department_ref in &self.departments {
-            result.push(department_ref.coerce()?);
+            result.push(department_ref.coerce().await?);
         }
         Ok(result)
     }
 
-    pub fn get_shifts(&self) -> Result<Vec<ClassShift>, Error> {
+    pub async fn get_shifts(&self) -> Result<Vec<ClassShift>, Error> {
         let mut result = vec![];
         for shift_ref in &self.shifts {
-            result.push(shift_ref.coerce()?);
+            result.push(shift_ref.coerce().await?);
         }
         Ok(result)
     }
 
-    #[must_use]
-    pub fn thumb_bytes(&self) -> Option<Result<Vec<u8>, Error>> {
+    pub async fn thumb_bytes(&self) -> Option<Result<Vec<u8>, Error>> {
         if let Some(thumb_url) = &self.thumb {
             Some(if let Some(bytes) = self.thumb_cache.get() {
                 Ok(bytes.clone())
             } else {
-                let response = self
-                    .client
-                    .base
-                    .fetch_bytes(&self.client.http_client, thumb_url);
+                let response = self.client.base.fetch_bytes(thumb_url).await;
+
                 if let Ok(bytes) = &response {
                     let _ = self.thumb_cache.set(bytes.clone());
                 }
+
                 response
             })
         } else {
@@ -768,19 +759,19 @@ impl fmt::Debug for Teacher {
 }
 
 impl Enrollment {
-    pub fn get_student(&self) -> Result<Student, Error> {
-        self.student.coerce()
+    pub async fn get_student(&self) -> Result<Student, Error> {
+        self.student.coerce().await
     }
-    pub fn get_class_instance(&self) -> Result<ClassInstance, Error> {
-        self.class_instance.coerce()
+    pub async fn get_class_instance(&self) -> Result<ClassInstance, Error> {
+        self.class_instance.coerce().await
     }
 }
 
 impl ClassShift {
-    pub fn get_teachers(&self) -> Result<Vec<Teacher>, Error> {
+    pub async fn get_teachers(&self) -> Result<Vec<Teacher>, Error> {
         let mut result = vec![];
         for teacher_ref in &self.teachers {
-            result.push(teacher_ref.coerce()?);
+            result.push(teacher_ref.coerce().await?);
         }
         Ok(result)
     }
@@ -809,9 +800,9 @@ impl Hash for ClassShift {
 }
 
 impl ClassShiftInstance {
-    pub fn get_place(&self) -> Result<Option<Place>, Error> {
+    pub async fn get_place(&self) -> Result<Option<Place>, Error> {
         Ok(if let Some(room_ref) = &self.room {
-            Some(room_ref.coerce()?)
+            Some(room_ref.coerce().await?)
         } else {
             None
         })
@@ -914,11 +905,11 @@ pub struct Group {
     pub url: String,
     pub thumb: Option<String>,
     pub group_type: GroupType,
+    pub outsiders_openness: GroupVisibility,
     pub official: bool,
     pub(crate) upgraded: Cell<bool>,
 
     pub(crate) client: Arc<Supernova>,
-    pub(crate) outsiders_openness: OnceCell<GroupVisibility>,
     pub(crate) activities: OnceCell<Vec<GroupActivity>>,
     pub(crate) schedulings: OnceCell<Vec<GroupScheduling>>,
     pub(crate) events: OnceCell<Vec<Event>>,
@@ -996,9 +987,9 @@ pub struct Event {
 }
 
 impl Event {
-    pub fn place(&self) -> Result<Option<Place>, Error> {
+    pub async fn place(&self) -> Result<Option<Place>, Error> {
         if let Some(place) = &self.place {
-            Ok(Some(place.coerce()?))
+            Ok(Some(place.coerce().await?))
         } else {
             Ok(None)
         }
@@ -1013,39 +1004,32 @@ pub struct EventsPage {
 }
 
 impl Group {
-    pub fn outsider_openness(&self) -> Result<GroupVisibility, Error> {
-        self.upgrade()?;
-        Ok(*self.outsiders_openness.get().unwrap())
-    }
-
-    pub fn activities(&self) -> Result<&[GroupActivity], Error> {
-        self.upgrade()?;
+    pub async fn activities(&self) -> Result<&[GroupActivity], Error> {
+        self.upgrade().await?;
         Ok(self.activities.get().unwrap())
     }
 
-    pub fn schedulings(&self) -> Result<&[GroupScheduling], Error> {
-        self.upgrade()?;
+    pub async fn schedulings(&self) -> Result<&[GroupScheduling], Error> {
+        self.upgrade().await?;
         Ok(self.schedulings.get().unwrap())
     }
 
-    pub fn events(&self) -> Result<&[Event], Error> {
-        self.upgrade()?;
+    pub async fn events(&self) -> Result<&[Event], Error> {
+        self.upgrade().await?;
         Ok(self.events.get().unwrap().as_slice())
     }
 
-    #[must_use]
-    pub fn thumb_bytes(&self) -> Option<Result<Vec<u8>, Error>> {
+    pub async fn thumb_bytes(&self) -> Option<Result<Vec<u8>, Error>> {
         if let Some(thumb_url) = &self.thumb {
             Some(if let Some(bytes) = self.thumb_cache.get() {
                 Ok(bytes.clone())
             } else {
-                let response = self
-                    .client
-                    .base
-                    .fetch_bytes(&self.client.http_client, thumb_url);
+                let response = self.client.base.fetch_bytes(thumb_url).await;
+
                 if let Ok(bytes) = &response {
                     let _ = self.thumb_cache.set(bytes.clone());
                 }
+
                 response
             })
         } else {
@@ -1054,17 +1038,14 @@ impl Group {
     }
 
     #[allow(unused)]
-    pub fn upgrade(&self) -> Result<(), Error> {
+    pub async fn upgrade(&self) -> Result<(), Error> {
         if !self.upgraded.get() {
-            let group = self.client.get_group(self.id)?;
+            let group = self.client.get_group(self.id).await?;
 
-            self.outsiders_openness
-                .set(*group.outsiders_openness.get().unwrap());
             self.activities.set(group.activities.get().unwrap().clone());
             self.schedulings
                 .set(group.schedulings.get().unwrap().clone());
             self.events.set(group.events.get().unwrap().clone());
-            self.upgraded.set(true);
         }
         Ok(())
     }
@@ -1095,8 +1076,12 @@ impl PartialOrd for GroupActivity {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         let datetime = match self {
             GroupActivity::Announcement(announcement) => announcement.datetime,
-            GroupActivity::EventAnnouncement(event_announcement) => event_announcement.datetime,
-            GroupActivity::GalleryUpload(gallery_upload) => gallery_upload.datetime,
+            GroupActivity::EventAnnouncement(event_announcement) => {
+                event_announcement.datetime
+            }
+            GroupActivity::GalleryUpload(gallery_upload) => {
+                gallery_upload.datetime
+            }
         };
         match other {
             GroupActivity::Announcement(announcement) => {
@@ -1113,8 +1098,8 @@ impl PartialOrd for GroupActivity {
 }
 
 impl GroupAnnouncement {
-    pub fn author(&self) -> Result<User, Error> {
-        self.author.coerce()
+    pub async fn author(&self) -> Result<User, Error> {
+        self.author.coerce().await
     }
 }
 
@@ -1127,23 +1112,24 @@ impl PartialEq for GroupAnnouncement {
 }
 
 impl EventAnnouncement {
-    pub fn author(&self) -> Result<User, Error> {
-        self.author.coerce()
+    pub async fn author(&self) -> Result<User, Error> {
+        self.author.coerce().await
     }
-    pub fn event(&self) -> Result<Event, Error> {
-        self.event.coerce()
+    pub async fn event(&self) -> Result<Event, Error> {
+        self.event.coerce().await
     }
 }
 
 impl PartialEq for EventAnnouncement {
     fn eq(&self, other: &Self) -> bool {
-        self.event.identifier.eq(&other.event.identifier) && self.datetime.eq(&other.datetime)
+        self.event.identifier.eq(&other.event.identifier)
+            && self.datetime.eq(&other.datetime)
     }
 }
 
 impl GalleryUpload {
-    pub fn author(&self) -> Result<User, Error> {
-        self.author.coerce()
+    pub async fn author(&self) -> Result<User, Error> {
+        self.author.coerce().await
     }
 }
 
@@ -1204,8 +1190,8 @@ impl EventsPage {
         self.previous_page.clone()
     }
 
-    pub fn successor(&self) -> Result<Option<Arc<EventsPage>>, Error> {
-        self.next_page.coerce()
+    pub async fn successor(&self) -> Result<Option<Arc<EventsPage>>, Error> {
+        self.next_page.coerce().await
     }
 }
 
@@ -1242,25 +1228,23 @@ impl NewsPage {
         self.previous_page.clone()
     }
 
-    pub fn successor(&self) -> Result<Option<Arc<NewsPage>>, Error> {
-        self.next_page.coerce()
+    pub async fn successor(&self) -> Result<Option<Arc<NewsPage>>, Error> {
+        self.next_page.coerce().await
     }
 }
 
 impl NewsItem {
-    #[must_use]
-    pub fn thumb_bytes(&self) -> Option<Result<Vec<u8>, Error>> {
+    pub async fn thumb_bytes(&self) -> Option<Result<Vec<u8>, Error>> {
         if let Some(thumb_url) = &self.thumb {
             Some(if let Some(bytes) = self.thumb_cache.get() {
                 Ok(bytes.clone())
             } else {
-                let response = self
-                    .client
-                    .base
-                    .fetch_bytes(&self.client.http_client, thumb_url);
+                let response = self.client.base.fetch_bytes(thumb_url).await;
+
                 if let Ok(bytes) = &response {
                     let _ = self.thumb_cache.set(bytes.clone());
                 }
+
                 response
             })
         } else {

@@ -10,6 +10,10 @@ pub enum Error {
     Server,
     #[error("Failed to decode the received message")]
     Decode,
+    #[error("Unable to serialize data:\n{0}")]
+    Serialization(serde_json::Error),
+    #[error("Unable to deserialize data:\n{0}")]
+    Deserialization(serde_json::Error),
     #[error("Received a message that didn't match the expected format:\n{0}")]
     Parsing(serde_json::Error, String),
     #[error("A resource is missing on the server")]
@@ -22,4 +26,6 @@ pub enum Error {
     Client,
     #[error("Network failure")]
     Network,
+    #[error("There was an error completing a request")]
+    Request,
 }

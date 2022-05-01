@@ -2,13 +2,17 @@ use crate::errors::Error;
 use crate::keys::*;
 use crate::models::*;
 use crate::{RequestConfig, Supernova};
+
 use std::fmt;
 use std::marker::PhantomData;
 use std::sync::Arc;
 
+use async_trait::async_trait;
+
 /// Something that can be obtained from feeding a reference to a client
+#[async_trait]
 pub(crate) trait CoersibleEntity<I> {
-    fn coerce(id: &I, client: Arc<Supernova>) -> Result<Self, Error>
+    async fn coerce(id: &I, client: Arc<Supernova>) -> Result<Self, Error>
     where
         Self: Sized;
 }
@@ -33,8 +37,8 @@ impl<T: CoersibleEntity<I>, I: fmt::Debug> ObjRef<T, I> {
 }
 
 impl<T: CoersibleEntity<I>, I> ObjRef<T, I> {
-    pub(crate) fn coerce(&self) -> Result<T, Error> {
-        T::coerce(&self.identifier, self.client.clone())
+    pub(crate) async fn coerce(&self) -> Result<T, Error> {
+        T::coerce(&self.identifier, self.client.clone()).await
     }
 }
 
@@ -48,81 +52,123 @@ impl<T: CoersibleEntity<I>, I: fmt::Debug> fmt::Debug for ObjRef<T, I> {
 ///  Implementations (Lots and lots of copy-paste)
 /// #############################################################
 
+#[async_trait]
 impl CoersibleEntity<DepartmentKey> for Department {
-    fn coerce(id: &DepartmentKey, client: Arc<Supernova>) -> Result<Self, Error> {
-        client.get_department(*id, &RequestConfig::default())
+    async fn coerce(
+        id: &DepartmentKey,
+        client: Arc<Supernova>,
+    ) -> Result<Self, Error> {
+        client.get_department(*id, &RequestConfig::default()).await
     }
 }
 
 impl ObjRef<Department, DepartmentKey> {}
 
+#[async_trait]
 impl CoersibleEntity<BuildingKey> for Building {
-    fn coerce(id: &BuildingKey, client: Arc<Supernova>) -> Result<Self, Error> {
-        client.get_building(*id, &RequestConfig::default())
+    async fn coerce(
+        id: &BuildingKey,
+        client: Arc<Supernova>,
+    ) -> Result<Self, Error> {
+        client.get_building(*id, &RequestConfig::default()).await
     }
 }
 
 impl ObjRef<Building, BuildingKey> {}
 
+#[async_trait]
 impl CoersibleEntity<PlaceKey> for Place {
-    fn coerce(id: &PlaceKey, client: Arc<Supernova>) -> Result<Self, Error> {
-        client.get_place(*id, &RequestConfig::default())
+    async fn coerce(
+        id: &PlaceKey,
+        client: Arc<Supernova>,
+    ) -> Result<Self, Error> {
+        client.get_place(*id, &RequestConfig::default()).await
     }
 }
 
 impl ObjRef<Place, PlaceKey> {}
 
+#[async_trait]
 impl CoersibleEntity<CourseKey> for Course {
-    fn coerce(id: &CourseKey, client: Arc<Supernova>) -> Result<Course, Error> {
-        client.get_course(*id, &RequestConfig::default())
+    async fn coerce(
+        id: &CourseKey,
+        client: Arc<Supernova>,
+    ) -> Result<Self, Error> {
+        client.get_course(*id, &RequestConfig::default()).await
     }
 }
 
 impl ObjRef<Course, CourseKey> {}
 
+#[async_trait]
 impl CoersibleEntity<ClassKey> for Class {
-    fn coerce(id: &ClassKey, client: Arc<Supernova>) -> Result<Self, Error> {
-        client.get_class(*id, &RequestConfig::default())
+    async fn coerce(
+        id: &ClassKey,
+        client: Arc<Supernova>,
+    ) -> Result<Self, Error> {
+        client.get_class(*id, &RequestConfig::default()).await
     }
 }
 
 impl ObjRef<Class, ClassKey> {}
 
+#[async_trait]
 impl CoersibleEntity<ClassInstanceKey> for ClassInstance {
-    fn coerce(id: &ClassInstanceKey, client: Arc<Supernova>) -> Result<Self, Error> {
-        client.get_class_instance(*id, &RequestConfig::default())
+    async fn coerce(
+        id: &ClassInstanceKey,
+        client: Arc<Supernova>,
+    ) -> Result<Self, Error> {
+        client
+            .get_class_instance(*id, &RequestConfig::default())
+            .await
     }
 }
 
 impl ObjRef<ClassInstance, ClassInstanceKey> {}
 
+#[async_trait]
 impl CoersibleEntity<StudentKey> for Student {
-    fn coerce(id: &StudentKey, client: Arc<Supernova>) -> Result<Self, Error> {
-        client.get_student(*id, &RequestConfig::default())
+    async fn coerce(
+        id: &StudentKey,
+        client: Arc<Supernova>,
+    ) -> Result<Self, Error> {
+        client.get_student(*id, &RequestConfig::default()).await
     }
 }
 
 impl ObjRef<Student, StudentKey> {}
 
+#[async_trait]
 impl CoersibleEntity<TeacherKey> for Teacher {
-    fn coerce(id: &TeacherKey, client: Arc<Supernova>) -> Result<Self, Error> {
-        client.get_teacher(*id, &RequestConfig::default())
+    async fn coerce(
+        id: &TeacherKey,
+        client: Arc<Supernova>,
+    ) -> Result<Self, Error> {
+        client.get_teacher(*id, &RequestConfig::default()).await
     }
 }
 
 impl ObjRef<Teacher, TeacherKey> {}
 
+#[async_trait]
 impl CoersibleEntity<EnrollmentKey> for Enrollment {
-    fn coerce(id: &EnrollmentKey, client: Arc<Supernova>) -> Result<Self, Error> {
-        client.get_enrollment(*id, &RequestConfig::default())
+    async fn coerce(
+        id: &EnrollmentKey,
+        client: Arc<Supernova>,
+    ) -> Result<Self, Error> {
+        client.get_enrollment(*id, &RequestConfig::default()).await
     }
 }
 
 impl ObjRef<Enrollment, EnrollmentKey> {}
 
+#[async_trait]
 impl CoersibleEntity<ShiftKey> for ClassShift {
-    fn coerce(id: &ShiftKey, client: Arc<Supernova>) -> Result<Self, Error> {
-        client.get_shift(*id, &RequestConfig::default())
+    async fn coerce(
+        id: &ShiftKey,
+        client: Arc<Supernova>,
+    ) -> Result<Self, Error> {
+        client.get_shift(*id, &RequestConfig::default()).await
     }
 }
 
@@ -130,10 +176,14 @@ impl ObjRef<ClassShift, ShiftKey> {}
 
 // ------------ Users ------------
 
+#[async_trait]
 impl CoersibleEntity<UserKey> for User {
-    fn coerce(_id: &UserKey, _client: Arc<Supernova>) -> Result<Self, Error> {
-        Err(Error::Generic)
-        // client.get_user(*id, &RequestConfig::default())
+    async fn coerce(
+        _id: &UserKey,
+        _client: Arc<Supernova>,
+    ) -> Result<Self, Error> {
+        todo!()
+        // client.get_user(*id, &RequestConfig::default())).await
     }
 }
 
@@ -141,24 +191,36 @@ impl ObjRef<User, UserKey> {}
 
 // ------------ Groups ------------
 
+#[async_trait]
 impl CoersibleEntity<EventKey> for Event {
-    fn coerce(_id: &EventKey, _client: Arc<Supernova>) -> Result<Self, Error> {
-        Err(Error::Generic)
-        // client.get_event(*id, &RequestConfig::default())
+    async fn coerce(
+        _id: &EventKey,
+        _client: Arc<Supernova>,
+    ) -> Result<Self, Error> {
+        todo!()
+        // client.get_event(*id, &RequestConfig::default()).await
     }
 }
 
 impl ObjRef<Event, EventKey> {}
 
+#[async_trait]
 impl CoersibleEntity<EventsPageKey> for Option<Arc<EventsPage>> {
-    fn coerce(id: &EventsPageKey, client: Arc<Supernova>) -> Result<Self, Error> {
-        client.get_events_page(*id, &RequestConfig::default())
+    async fn coerce(
+        id: &EventsPageKey,
+        client: Arc<Supernova>,
+    ) -> Result<Self, Error> {
+        client.get_events_page(*id, &RequestConfig::default()).await
     }
 }
 // ------------ News --------------
 
+#[async_trait]
 impl CoersibleEntity<NewsPageKey> for Option<Arc<NewsPage>> {
-    fn coerce(id: &NewsPageKey, client: Arc<Supernova>) -> Result<Self, Error> {
-        client.get_news_page(*id, &RequestConfig::default())
+    async fn coerce(
+        id: &NewsPageKey,
+        client: Arc<Supernova>,
+    ) -> Result<Self, Error> {
+        client.get_news_page(*id, &RequestConfig::default()).await
     }
 }

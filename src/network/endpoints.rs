@@ -2,13 +2,16 @@ use crate::keys::*;
 use crate::network::{http::*, models as nmodels};
 use crate::AuthToken;
 use crate::{keys, Error};
-use lazy_static::lazy_static;
-use serde::de::DeserializeOwned;
+
 use std::borrow::BorrowMut;
 use std::cell::RefCell;
 use std::env;
 use std::fmt;
 use std::sync::Mutex;
+
+use hyper::Method;
+use lazy_static::lazy_static;
+use serde::de::DeserializeOwned;
 
 lazy_static! {
     pub(crate) static ref UPSTREAM: String = {
@@ -26,13 +29,16 @@ lazy_static! {
     };
 }
 
+#[allow(dead_code)]
 pub enum Endpoint {
     Login,
     Logout,
     TokenValidation,
+
+    Profile(UserKey),
+
     Buildings,
     Building(BuildingKey),
-    // Rooms,
     Places,
     Place(RoomKey),
     Departments,
@@ -52,6 +58,19 @@ pub enum Endpoint {
     EventsPage(EventsPageKey),
 
     NewsItemPage(NewsPageKey),
+
+    LearningAreas,
+    LearningArea(LearningAreaKey),
+    LearningSubarea(LearningSubareaKey),
+    LearningSection(LearningSectionKey),
+
+    Question(QuestionKey),
+
+    Transportation,
+    Weather,
+
+    Services,
+    Service(ServiceKey),
 }
 
 impl fmt::Display for Endpoint {
@@ -62,32 +81,69 @@ impl fmt::Display for Endpoint {
             Endpoint::Login => f.write_str("login"),
             Endpoint::Logout => f.write_str("logout"),
             Endpoint::TokenValidation => f.write_str("validation"),
-            Endpoint::Buildings => f.write_str("buildings"),
-            Endpoint::Building(id) => f.write_fmt(format_args!("building/{}/", id)),
-            Endpoint::Place(id) => f.write_fmt(format_args!("place/{}/", id)),
-            Endpoint::Places => f.write_str("places"),
-            Endpoint::Departments => f.write_str("departments"),
-            Endpoint::Department(id) => f.write_fmt(format_args!("department/{}/", id)),
-            Endpoint::Courses => f.write_str("courses"),
-            Endpoint::Course(id) => f.write_fmt(format_args!("course/{}/", id)),
-            Endpoint::Classes => f.write_str("classes"),
-            Endpoint::Class(id) => f.write_fmt(format_args!("class/{}/", id)),
-            Endpoint::ClassInstance(id) => f.write_fmt(format_args!("class/i/{}/", id)),
-            Endpoint::Student(id) => f.write_fmt(format_args!("student/{}/", id)),
-            Endpoint::Teacher(id) => f.write_fmt(format_args!("teacher/{}/", id)),
-            Endpoint::Enrollment(id) => f.write_fmt(format_args!("enrollment/{}/", id)),
-            Endpoint::Shift(id) => f.write_fmt(format_args!("shift/{}/", id)),
-            // Endpoint::ClassInstanceSchedule(id) => {
-            //     f.write_fmt(format_args!("class/i/{}/schedule", id))
-            // }
-            Endpoint::Groups => f.write_str("groups"),
-            Endpoint::Group(id) => f.write_fmt(format_args!("group/{}/", id)),
-            Endpoint::EventsPage((limit, offset)) => {
-                f.write_fmt(format_args!("events/?limit={}&offset={}", limit, offset))
+
+            Endpoint::Profile(id) => {
+                f.write_fmt(format_args!("services/{}", id))
             }
 
-            Endpoint::NewsItemPage((limit, offset)) => {
-                f.write_fmt(format_args!("news/?limit={}&offset={}", limit, offset))
+            Endpoint::Buildings => f.write_str("buildings"),
+            Endpoint::Building(id) => {
+                f.write_fmt(format_args!("building/{}", id))
+            }
+            Endpoint::Place(id) => f.write_fmt(format_args!("place/{}", id)),
+            Endpoint::Places => f.write_str("places"),
+            Endpoint::Departments => f.write_str("departments"),
+            Endpoint::Department(id) => {
+                f.write_fmt(format_args!("department/{}", id))
+            }
+            Endpoint::Courses => f.write_str("courses"),
+            Endpoint::Course(id) => f.write_fmt(format_args!("course/{}", id)),
+            Endpoint::Classes => f.write_str("classes"),
+            Endpoint::Class(id) => f.write_fmt(format_args!("class/{}", id)),
+            Endpoint::ClassInstance(id) => {
+                f.write_fmt(format_args!("class/i/{}", id))
+            }
+            Endpoint::Student(id) => {
+                f.write_fmt(format_args!("student/{}", id))
+            }
+            Endpoint::Teacher(id) => {
+                f.write_fmt(format_args!("teacher/{}", id))
+            }
+            Endpoint::Enrollment(id) => {
+                f.write_fmt(format_args!("enrollment/{}", id))
+            }
+            Endpoint::Shift(id) => f.write_fmt(format_args!("shift/{}", id)),
+
+            Endpoint::Groups => f.write_str("groups"),
+            Endpoint::Group(id) => f.write_fmt(format_args!("group/{}", id)),
+            Endpoint::EventsPage((limit, offset)) => f.write_fmt(format_args!(
+                "events?limit={}&offset={}",
+                limit, offset
+            )),
+
+            Endpoint::NewsItemPage((limit, offset)) => f.write_fmt(
+                format_args!("news?limit={}&offset={}", limit, offset),
+            ),
+
+            Endpoint::LearningAreas => f.write_str("learning/areas"),
+            Endpoint::LearningArea(id) => {
+                f.write_fmt(format_args!("learning/area/{}", id))
+            }
+            Endpoint::LearningSubarea(id) => {
+                f.write_fmt(format_args!("learning/subarea/{}", id))
+            }
+            Endpoint::LearningSection(id) => {
+                f.write_fmt(format_args!("learning/section/{}", id))
+            }
+            Endpoint::Question(id) => {
+                f.write_fmt(format_args!("learning/question/{}", id))
+            }
+
+            Endpoint::Transportation => f.write_str("transportation/day"),
+            Endpoint::Weather => f.write_str("weather"),
+            Endpoint::Services => f.write_str("services"),
+            Endpoint::Service(id) => {
+                f.write_fmt(format_args!("services/{}", id))
             }
         }
     }
@@ -98,150 +154,153 @@ pub(crate) struct BaseSupernova {}
 
 impl BaseSupernova {
     #[allow(clippy::unused_self)]
-    fn generic_fetch<T: DeserializeOwned>(&self, http: &HTTPClient, url: &str) -> Result<T, Error> {
-        let request = RequestBuilder::new(url).build();
-        let json_str = http.send(request)?;
-
-        serde_json::from_str(&json_str).map_err(|e| Error::Parsing(e, json_str.to_string()))
+    async fn generic_fetch<T: DeserializeOwned>(
+        &self,
+        url: &str,
+    ) -> Result<T, Error> {
+        let response = Request::new(&url).send().await?;
+        response.deserialize().await
     }
 
     #[allow(clippy::unused_self)]
-    pub(crate) fn fetch_bytes(&self, http: &HTTPClient, url: &str) -> Result<Vec<u8>, Error> {
-        let request = if url.starts_with('/') {
+    pub(crate) async fn fetch_bytes(
+        &self,
+        url: &str,
+    ) -> Result<Vec<u8>, Error> {
+        let response = if url.starts_with('/') {
             let url = format!("{}{}", *UPSTREAM, url);
-            RequestBuilder::new(&url).build()
+            Request::new(&url)
         } else {
-            RequestBuilder::new(url).build()
-        };
-        http.fetch_bytes(request)
+            Request::new(url)
+        }
+        .send()
+        .await?;
+        response.to_vec().await
     }
 
     #[allow(clippy::unused_self)]
-    pub(crate) fn login(
+    pub(crate) async fn login<'creds>(
         &self,
-        http: &HTTPClient,
-        credentials: &nmodels::BasicAuthCredentials,
+        credentials: &nmodels::BasicAuthCredentials<'creds>,
     ) -> Result<nmodels::TokenResult, Error> {
-        let request = RequestBuilder::new(&Endpoint::Login.to_string())
-            .set_method(Method::Post)
-            .set_body(serde_json::json!(credentials))
-            .build();
-        let json_str = http.send(request)?;
+        let response = Request::new(&Endpoint::Login.to_string())
+            .send_serializable(credentials)
+            .await?;
 
-        serde_json::from_str(&json_str).map_err(|e| Error::Parsing(e, json_str.to_string()))
+        response.deserialize().await
     }
 
     #[allow(clippy::unused_self)]
-    pub(crate) fn verify(&self, http: &HTTPClient, token: AuthToken) -> Result<(), Error> {
-        let request = RequestBuilder::new(&Endpoint::TokenValidation.to_string())
-            .set_method(Method::Get)
-            .add_header("Authorization".to_string(), format!("Token {}", token))
-            .set_body(serde_json::json!(nmodels::TokenCredentials::new(token)))
-            .build();
-        http.send(request)?;
-        // let json_str = http.send(request)?;
-        // if json_str == "Success" {
-        //     ???
-        // }
-        Ok(())
+    pub(crate) async fn verify(&self, token: AuthToken) -> Result<(), Error> {
+        let response = Request::new(&Endpoint::TokenValidation.to_string())
+            .attach_token(&token)
+            .send()
+            .await?;
+
+        let response_text: String = response.deserialize().await?;
+        if response_text == "Success" {
+            Ok(())
+        } else {
+            Err(Error::Authentication)
+        }
     }
 
-    pub(crate) fn fetch_departments(
+    pub(crate) async fn fetch_departments(
         &self,
-        http: &HTTPClient,
     ) -> Result<Vec<nmodels::Department>, Error> {
-        self.generic_fetch(http, &Endpoint::Departments.to_string())
+        self.generic_fetch(&Endpoint::Departments.to_string()).await
     }
 
-    pub(crate) fn fetch_buildings(
+    pub(crate) async fn fetch_buildings(
         &self,
-        http: &HTTPClient,
     ) -> Result<Vec<nmodels::Building>, Error> {
-        self.generic_fetch(http, &Endpoint::Buildings.to_string())
+        self.generic_fetch(&Endpoint::Buildings.to_string()).await
     }
 
-    pub(crate) fn fetch_classes(&self, http: &HTTPClient) -> Result<Vec<nmodels::Class>, Error> {
-        self.generic_fetch(http, &Endpoint::Classes.to_string())
-    }
-
-    pub(crate) fn fetch_courses(&self, http: &HTTPClient) -> Result<Vec<nmodels::Course>, Error> {
-        self.generic_fetch(http, &Endpoint::Courses.to_string())
-    }
-
-    pub(crate) fn fetch_places(&self, http: &HTTPClient) -> Result<Vec<nmodels::Place>, Error> {
-        self.generic_fetch(http, &Endpoint::Places.to_string())
-    }
-
-    pub(crate) fn fetch_building(
+    pub(crate) async fn fetch_classes(
         &self,
-        http: &HTTPClient,
+    ) -> Result<Vec<nmodels::Class>, Error> {
+        self.generic_fetch(&Endpoint::Classes.to_string()).await
+    }
+
+    pub(crate) async fn fetch_courses(
+        &self,
+    ) -> Result<Vec<nmodels::Course>, Error> {
+        self.generic_fetch(&Endpoint::Courses.to_string()).await
+    }
+
+    pub(crate) async fn fetch_places(
+        &self,
+    ) -> Result<Vec<nmodels::Place>, Error> {
+        self.generic_fetch(&Endpoint::Places.to_string()).await
+    }
+
+    pub(crate) async fn fetch_building(
+        &self,
         key: keys::BuildingKey,
     ) -> Result<nmodels::Building, Error> {
-        self.generic_fetch(http, &Endpoint::Building(key).to_string())
+        self.generic_fetch(&Endpoint::Building(key).to_string())
+            .await
     }
 
-    pub(crate) fn fetch_place(
+    pub(crate) async fn fetch_place(
         &self,
-        http: &HTTPClient,
         key: keys::RoomKey,
     ) -> Result<nmodels::Place, Error> {
-        self.generic_fetch(http, &Endpoint::Place(key).to_string())
+        self.generic_fetch(&Endpoint::Place(key).to_string()).await
     }
 
-    pub(crate) fn fetch_department(
+    pub(crate) async fn fetch_department(
         &self,
-        http: &HTTPClient,
         key: keys::DepartmentKey,
     ) -> Result<nmodels::Department, Error> {
-        self.generic_fetch(http, &Endpoint::Department(key).to_string())
+        self.generic_fetch(&Endpoint::Department(key).to_string())
+            .await
     }
 
-    pub(crate) fn fetch_course(
+    pub(crate) async fn fetch_course(
         &self,
-        http: &HTTPClient,
         key: keys::CourseKey,
     ) -> Result<nmodels::Course, Error> {
-        self.generic_fetch(http, &Endpoint::Course(key).to_string())
+        self.generic_fetch(&Endpoint::Course(key).to_string()).await
     }
 
-    pub(crate) fn fetch_class(
+    pub(crate) async fn fetch_class(
         &self,
-        http: &HTTPClient,
         key: keys::ClassKey,
     ) -> Result<nmodels::Class, Error> {
-        self.generic_fetch(http, &Endpoint::Class(key).to_string())
+        self.generic_fetch(&Endpoint::Class(key).to_string()).await
     }
 
-    pub(crate) fn fetch_groups(&self, http: &HTTPClient) -> Result<Vec<nmodels::WeakGroup>, Error> {
-        let endpoint = Endpoint::Groups;
-        self.generic_fetch(http, &endpoint.to_string())
-    }
-
-    pub(crate) fn fetch_group(
+    pub(crate) async fn fetch_groups(
         &self,
-        http: &HTTPClient,
+    ) -> Result<Vec<nmodels::WeakGroup>, Error> {
+        let endpoint = Endpoint::Groups;
+        self.generic_fetch(&endpoint.to_string()).await
+    }
+
+    pub(crate) async fn fetch_group(
+        &self,
         key: GroupKey,
     ) -> Result<nmodels::Group, Error> {
         let endpoint = Endpoint::Group(key);
-        self.generic_fetch(http, &endpoint.to_string())
+        self.generic_fetch(&endpoint.to_string()).await
     }
 
-    pub(crate) fn fetch_events(
+    pub(crate) async fn fetch_events(
         &self,
-        http: &HTTPClient,
         key: keys::EventsPageKey,
     ) -> Result<nmodels::EventsPage, Error> {
         let endpoint = Endpoint::EventsPage(key);
-        self.generic_fetch(http, &endpoint.to_string())
+        self.generic_fetch(&endpoint.to_string()).await
     }
 
-    pub(crate) fn fetch_news(
+    pub(crate) async fn fetch_news(
         &self,
-        http: &HTTPClient,
         key: keys::NewsPageKey,
     ) -> Result<nmodels::NewsPage, Error> {
         let endpoint = Endpoint::NewsItemPage(key);
-        self.generic_fetch(http, &endpoint.to_string())
+        self.generic_fetch(&endpoint.to_string()).await
     }
 }
 
@@ -267,104 +326,107 @@ impl AuthenticatedSupernova {
             .swap(&RefCell::new(None));
     }
 
-    fn generic_fetch<T: DeserializeOwned>(&self, http: &HTTPClient, url: &str) -> Result<T, Error> {
-        let request = if let Some(credentials) = self.credentials.lock().unwrap().borrow().as_ref()
-        {
-            RequestBuilder::new(url)
-                .add_header(
-                    "Authorization".to_string(),
-                    format!("Token {}", credentials),
-                )
-                .build()
-        } else {
-            return Err(Error::MissingAuthentication);
-        };
+    async fn generic_fetch<T: DeserializeOwned>(
+        &self,
+        url: &str,
+    ) -> Result<T, Error> {
+        let token = self
+            .credentials
+            .lock()
+            .unwrap()
+            .borrow()
+            .clone()
+            .ok_or(Error::MissingAuthentication)?;
 
-        let json_str = http.send(request)?;
-        serde_json::from_str(&json_str).map_err(|e| Error::Parsing(e, json_str.to_string()))
+        let response = Request::new(&url).attach_token(&token).send().await?;
+
+        response.deserialize().await
     }
 
     #[allow(clippy::unused_self)]
-    pub(crate) fn fetch_bytes(&self, http: &HTTPClient, url: &str) -> Result<Vec<u8>, Error> {
-        if let Some(credentials) = self.credentials.lock().unwrap().borrow().as_ref() {
+    pub(crate) async fn fetch_bytes(
+        &self,
+        url: &str,
+    ) -> Result<Vec<u8>, Error> {
+        if let Some(credentials) =
+            self.credentials.lock().unwrap().borrow().as_ref()
+        {
             let request = if url.starts_with('/') {
                 let url = format!("{}{}", *UPSTREAM, url);
-                RequestBuilder::new(&url)
-                    .add_header(
-                        "Authorization".to_string(),
-                        format!("Token {}", credentials),
-                    )
-                    .build()
+                Request::new(&url)
             } else {
-                RequestBuilder::new(url)
-                    .add_header(
-                        "Authorization".to_string(),
-                        format!("Token {}", credentials),
-                    )
-                    .build()
+                Request::new(url)
             };
 
-            http.fetch_bytes(request)
+            let response = request.attach_token(&credentials).send().await?;
+
+            response.to_vec().await
         } else {
             Err(Error::MissingAuthentication)
         }
     }
 
-    pub(crate) fn logout(&self, http: &HTTPClient) -> Result<nmodels::TokenResult, Error> {
-        let request = if let Some(credentials) = self.credentials.lock().unwrap().borrow().as_ref()
+    pub(crate) async fn logout(&self) -> Result<(), Error> {
+        if let Some(credentials) =
+            self.credentials.lock().unwrap().borrow().as_ref()
         {
-            RequestBuilder::new(&Endpoint::Logout.to_string())
-                .add_header(
-                    "Authorization".to_string(),
-                    format!("Token {}", credentials),
-                )
-                .set_method(Method::Delete)
-                .build()
-        } else {
-            return Err(Error::MissingAuthentication);
-        };
-        let json_str = http.send(request)?;
+            let response = Request::new(&Endpoint::Logout.to_string())
+                .attach_token(credentials)
+                .method(Method::DELETE)
+                .send()
+                .await?;
 
-        serde_json::from_str(&json_str).map_err(|e| Error::Parsing(e, json_str.to_string()))
+            let status_code = response.code();
+            if status_code.is_success() {
+                Ok(())
+            } else if status_code.is_server_error() {
+                Err(Error::Server)
+            } else if status_code.is_client_error() {
+                Err(Error::Client)
+            } else {
+                Err(Error::Generic)
+            }
+        } else {
+            Err(Error::MissingAuthentication)
+        }
     }
 
-    pub(crate) fn fetch_class_instance(
+    pub(crate) async fn fetch_class_instance(
         &self,
-        http: &HTTPClient,
         key: keys::ClassInstanceKey,
     ) -> Result<nmodels::ClassInstance, Error> {
-        self.generic_fetch(http, &Endpoint::ClassInstance(key).to_string())
+        self.generic_fetch(&Endpoint::ClassInstance(key).to_string())
+            .await
     }
 
-    pub(crate) fn fetch_student(
+    pub(crate) async fn fetch_student(
         &self,
-        http: &HTTPClient,
         key: keys::StudentKey,
     ) -> Result<nmodels::Student, Error> {
-        self.generic_fetch(http, &Endpoint::Student(key).to_string())
+        self.generic_fetch(&Endpoint::Student(key).to_string())
+            .await
     }
 
-    pub(crate) fn fetch_teacher(
+    pub(crate) async fn fetch_teacher(
         &self,
-        http: &HTTPClient,
         key: keys::TeacherKey,
     ) -> Result<nmodels::Teacher, Error> {
-        self.generic_fetch(http, &Endpoint::Teacher(key).to_string())
+        self.generic_fetch(&Endpoint::Teacher(key).to_string())
+            .await
     }
 
-    pub(crate) fn fetch_enrollment(
+    pub(crate) async fn fetch_enrollment(
         &self,
-        http: &HTTPClient,
         key: keys::TeacherKey,
     ) -> Result<nmodels::Enrollment, Error> {
-        self.generic_fetch(http, &Endpoint::Enrollment(key).to_string())
+        self.generic_fetch(&Endpoint::Enrollment(key).to_string())
+            .await
     }
 
-    pub(crate) fn fetch_shift(
+    pub(crate) async fn fetch_shift(
         &self,
-        http: &HTTPClient,
         key: keys::TeacherKey,
     ) -> Result<nmodels::ClassShift, Error> {
-        self.generic_fetch(http, &Endpoint::Shift(key).to_string())
+        self.generic_fetch(&Endpoint::Shift(key).to_string()).await
     }
 }
