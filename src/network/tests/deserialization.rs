@@ -1,10 +1,9 @@
 use crate::network::models::{
-    Building, BuildingPartial, Class, ClassInfo, ClassInfoEntry, ClassInfoSources, ClassInstance,
-    ClassInstanceFile, ClassInstanceFiles, ClassShift, ClassShiftInstance, CoursePartial, Degree,
-    Department, DepartmentPartial, File, FileCategory, PartialClassInstance, Period, ShiftType,
+    Building, Class, ClassInfo, ClassInfoEntry, ClassInfoSources,
+    ClassInstance, ClassInstanceFile, ClassInstanceFiles, ClassShift,
+    ClassShiftInstance, Department, File, FileCategory, Period, ShiftType,
     Weekday,
 };
-use std::collections::HashMap;
 
 #[test]
 fn ok_buildings() {
@@ -14,40 +13,52 @@ fn ok_buildings() {
         "id": 16,
         "name": "Biblioteca",
         "abbreviation": "Bibliot.",
+        "places": [],
         "url": "/faculdade/campus/edificio/16/"
     },
     {
         "id": 19,
         "name": "Cenimat",
         "abbreviation": "Cenimat",
+        "places": [],
         "url": "/faculdade/campus/edificio/19/"
     },
     {
         "id": 17,
         "name": "Centro Excelência do Ambiente",
         "abbreviation": "CEA",
+        "places": [],
         "url": "/faculdade/campus/edificio/17/"
     }
 ]"#;
-    let parsed: Vec<BuildingPartial> = serde_json::from_str(&json).unwrap();
+    let parsed: Vec<Building> = serde_json::from_str(&json).unwrap();
 
     assert_eq!(
         parsed,
         vec![
-            BuildingPartial {
+            Building {
                 id: 16,
                 name: "Biblioteca".to_string(),
-                abbreviation: "Bibliot.".to_string()
+                abbreviation: "Bibliot.".to_string(),
+                places: vec![],
+                cover: None,
+                thumb: None
             },
-            BuildingPartial {
+            Building {
                 id: 19,
                 name: "Cenimat".to_string(),
-                abbreviation: "Cenimat".to_string()
+                abbreviation: "Cenimat".to_string(),
+                places: vec![],
+                cover: None,
+                thumb: None
             },
-            BuildingPartial {
+            Building {
                 id: 17,
                 name: "Centro Excelência do Ambiente".to_string(),
-                abbreviation: "CEA".to_string()
+                abbreviation: "CEA".to_string(),
+                places: vec![],
+                cover: None,
+                thumb: None
             },
         ]
     )
@@ -60,6 +71,9 @@ fn ok_building() {
         "id": 2,
         "name": "Edifício II",
         "abbreviation": "II",
+        "places": [],
+        "cover": "abc",
+        "thumb": "xyz",
         "url": "/faculdade/campus/edificio/2/"
     }
 "#;
@@ -72,6 +86,9 @@ fn ok_building() {
             id: 2,
             name: "Edifício II".to_string(),
             abbreviation: "II".to_string(),
+            places: vec![],
+            cover: Some("abc".to_string()),
+            thumb: Some("xyz".to_string())
         },
     )
 }
@@ -82,34 +99,47 @@ fn ok_departments() {
 [
     {
         "id": 24,
-        "name": "Apoio ao Ensino"
+        "name": "Apoio ao Ensino",
+        "building": 321,
+        "courses": [123]
     },
     {
         "id": 18,
-        "name": "Área da Física"
+        "name": "Área da Física",
+        "courses": []
     },
     {
         "id": 6,
-        "name": "Biologia Vegetal"
+        "name": "Biologia Vegetal",
+        "courses": []
     }
 ]"#;
 
-    let parsed: Vec<DepartmentPartial> = serde_json::from_str(&json).unwrap();
+    let parsed: Vec<Department> = serde_json::from_str(&json).unwrap();
 
     assert_eq!(
         parsed,
         vec![
-            DepartmentPartial {
+            Department {
                 id: 24,
-                name: "Apoio ao Ensino".to_string()
+                name: "Apoio ao Ensino".to_string(),
+                description: None,
+                courses: vec![123],
+                building: Some(321)
             },
-            DepartmentPartial {
+            Department {
                 id: 18,
-                name: "Área da Física".to_string()
+                name: "Área da Física".to_string(),
+                description: None,
+                courses: vec![],
+                building: None
             },
-            DepartmentPartial {
+            Department {
                 id: 6,
-                name: "Biologia Vegetal".to_string()
+                name: "Biologia Vegetal".to_string(),
+                description: None,
+                courses: vec![],
+                building: None
             },
         ]
     )
@@ -122,12 +152,7 @@ fn ok_department() {
     "id": 12,
     "name": "Informática",
     "description": "Foo Bar Baz",
-    "building": {
-        "id": 2,
-        "name": "Edifício II",
-        "abbreviation": "II",
-        "url": "/faculdade/campus/edificio/2/"
-    },
+    "building":  123,
     "classes": [
         {
             "id": 1768,
@@ -139,34 +164,6 @@ fn ok_department() {
         }
     ],
     "courses": [
-        {
-            "id": 29,
-            "name": "Engenharia Informática",
-            "abbreviation": "LEI",
-            "degree": 1,
-            "degree_display": "Licenciatura"
-        },
-        {
-            "id": 186,
-            "name": "Engenharia Informática",
-            "abbreviation": "MEI",
-            "degree": 2,
-            "degree_display": "Mestrado"
-        },
-        {
-            "id": 195,
-            "name": "Engenharia Informática",
-            "abbreviation": "MIEI",
-            "degree": 4,
-            "degree_display": "Mestrado Integrado"
-        },
-        {
-            "id": 143,
-            "name": "Engenharia Informática",
-            "abbreviation": "PGEI",
-            "degree": 5,
-            "degree_display": "Pos-Graduação"
-        }
     ],
     "url": "/faculdade/departamento/12/",
     "external_id": 98021
@@ -179,38 +176,9 @@ fn ok_department() {
         Department {
             id: 12,
             name: "Informática".to_string(),
-            description: "Foo Bar Baz".to_string(),
-            courses: vec![
-                CoursePartial {
-                    id: 29,
-                    abbreviation: "LEI".to_string(),
-                    name: "Engenharia Informática".to_string(),
-                    degree: Degree::BSc
-                },
-                CoursePartial {
-                    id: 186,
-                    abbreviation: "MEI".to_string(),
-                    name: "Engenharia Informática".to_string(),
-                    degree: Degree::MSc
-                },
-                CoursePartial {
-                    id: 195,
-                    abbreviation: "MIEI".to_string(),
-                    name: "Engenharia Informática".to_string(),
-                    degree: Degree::IntegratedMSc
-                },
-                CoursePartial {
-                    id: 143,
-                    abbreviation: "PGEI".to_string(),
-                    name: "Engenharia Informática".to_string(),
-                    degree: Degree::PostGraduation
-                }
-            ],
-            building: BuildingPartial {
-                id: 2,
-                name: "Edifício II".to_string(),
-                abbreviation: "II".to_string()
-            }
+            description: Some("Foo Bar Baz".to_string()),
+            courses: vec![],
+            building: Some(123)
         },
     )
 }
@@ -223,45 +191,12 @@ fn ok_class() {
     "name": "Atividade Prática de Desenvolvimento Curricular",
     "abbreviation": "APDC",
     "credits": 10,
-    "department": {
-        "id": 12,
-        "name": "Informática"
-    },
-    "instances": [
-        {
-            "id": 24767,
-            "parent": 449,
-            "period": 2,
-            "period_display": "1º semestre",
-            "year": 2018,
-            "url": "/faculdade/cadeira/i/24767/"
-        },
-        {
-            "id": 24770,
-            "parent": 449,
-            "period": 3,
-            "period_display": "2º semestre",
-            "year": 2017,
-            "url": "/faculdade/cadeira/i/24770/"
-        },
-        {
-            "id": 24766,
-            "parent": 449,
-            "period": 2,
-            "period_display": "1º semestre",
-            "year": 2020,
-            "url": "/faculdade/cadeira/i/24766/"
-        }
-    ],
+    "department": 123,
+    "instances": [1, 2, 3],
     "url": "/faculdade/cadeira/449/",
     "external_id": 11156
 }"#;
 
-    // let error = serde_json::from_str::<Class>(&json).unwrap_err();
-    // println!("{}", error);
-    // println!("{}", json.lines().skip(error.line()).take(1).collect::<String>());
-    //
-    // return;
     let parsed: Class = serde_json::from_str(&json).unwrap();
 
     assert_eq!(
@@ -271,27 +206,8 @@ fn ok_class() {
             name: "Atividade Prática de Desenvolvimento Curricular".to_string(),
             abbreviation: "APDC".to_string(),
             credits: 10,
-            department: DepartmentPartial {
-                id: 12,
-                name: "Informática".to_string()
-            },
-            instances: vec![
-                PartialClassInstance {
-                    id: 24767,
-                    year: 2018,
-                    period: Period::FirstSemester
-                },
-                PartialClassInstance {
-                    id: 24770,
-                    year: 2017,
-                    period: Period::SecondSemester
-                },
-                PartialClassInstance {
-                    id: 24766,
-                    year: 2020,
-                    period: Period::FirstSemester
-                },
-            ],
+            department: Some(123),
+            instances: vec![1, 2, 3],
         }
     )
 }
@@ -369,11 +285,10 @@ fn ok_class_instance() {
             }
         }
     },
-    "department": {
-        "id": 12,
-        "name": "Informática"
-    },
+    "department": 12,
     "avg_grade": null,
+    "enrollments": [],
+    "shifts": [],
     "url": "/faculdade/cadeira/i/24772/"
 }"#;
 
@@ -442,25 +357,20 @@ fn ok_class_instance() {
         },
     };
 
-    // let mut information = HashMap::new();
-    // information.insert("upsteam".to_string(), class_info);
-
     assert_eq!(
         parsed,
         ClassInstance {
             id: 24772,
             year: 2021,
-            department: DepartmentPartial {
-                id: 12,
-                name: "Informática".to_string()
-            },
+            parent: 449,
+            department: Some(12),
             period: Period::SecondSemester,
-            students: vec![],
-            teachers: vec![],
+            enrollments: vec![],
             information: ClassInfoSources {
-                upstream: class_info
+                upstream: Some(class_info)
             },
-            avg_grade: None
+            avg_grade: None,
+            shifts: vec![]
         },
     )
 }
@@ -502,18 +412,27 @@ fn ok_class_instance_shifts() {
 
     assert_eq!(
         parsed,
-        vec![ClassShift {
-            id: 42211,
-            number: 1,
-            shift_type: ShiftType::Seminar,
-            teachers: vec![879],
-            instances: vec![ClassShiftInstance {
-                weekday: Weekday::Monday,
-                start: 540,
-                duration: 120,
-                room: None
-            }]
-        }]
+        vec![
+            ClassShift {
+                id: 42211,
+                number: 1,
+                shift_type: ShiftType::Seminar,
+                teachers: vec![879],
+                instances: vec![ClassShiftInstance {
+                    weekday: Weekday::Wednesday,
+                    start: 540,
+                    duration: 120,
+                    room: None
+                }]
+            },
+            ClassShift {
+                id: 42205,
+                number: 3,
+                shift_type: ShiftType::OnlinePracticalTheoretical,
+                teachers: vec![],
+                instances: vec![]
+            },
+        ]
     )
 }
 
@@ -523,7 +442,7 @@ fn ok_class_instance_files() {
 {
     "official": [
         {
-            "id": "214498",
+            "id": 214498,
             "file": {
                 "hash": "3b19355d701899dc90ee77525d52ce67007bd346",
                 "size": 63488,
@@ -563,8 +482,8 @@ fn ok_class_instance_files() {
                 category: FileCategory::Others,
                 upload_datetime: "2021-03-24T02:06:49.551799Z".to_string(),
                 uploader: None,
-                uploader_teacher: None,
-                url: "".to_string()
+                uploader_teacher: Some(879),
+                url: "/faculdade/cadeira/i/24772/ficheiro/214498".to_string()
             }],
             community: vec![]
         }
